@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(find:*)",
+      "Read(//c/Users/stephen.thompson/Documents/Claude Code/Altium_Scripting_Documentation/**)"
     ]
   }
 }
