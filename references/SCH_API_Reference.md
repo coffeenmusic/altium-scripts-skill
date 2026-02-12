@@ -59,6 +59,7 @@ Alternative: `SchServer.SchObjectFactory(objectType, eCreate_Default);`
 ### ISch_Component
 `Designator` (ISch_Parameter - has .Name .Text) `Comment` (ISch_Parameter - has .Text) `LibReference` (String) `LibraryPath` (String) `Location` (TLocation) `Orientation` (TRotationBy90) `IsMirrored` (Boolean) `CurrentPartID` (Integer) `DisplayMode` (Integer) `AreaColor` (TColor) `PinColor` (TColor) `ShowHiddenFields` (Boolean) `UniqueId` (String) `ComponentDescription` (String) `Selection` (Boolean)
 Multi-part: `IsMultiPartComponent` `FullPartDesignator(PartID)` `GetState_CurrentPartID`
+Direct param access: `Comp.GetState_SchParameterByName('ParamName').Text` - get parameter value by name without iterating.
 Library ID: `LibIdentifierKind` `LibraryIdentifier` `DesignItemID`
 Children: `AddSchObject(child)` `RemoveSchObject(child)` `SchIterator_Create` `SchIterator_Destroy(iter)`
 Movement: `MoveByXY(dx, dy)`
@@ -142,7 +143,8 @@ Finally
   CurrentSch.SchIterator_Destroy(Iterator);
 End;
 ```
-Optional depth: `Iterator.SetState_IterationDepth(eIterateFirstLevel);` (standalone objects only, not children)
+Optional depth: `Iterator.SetState_IterationDepth(eIterateFirstLevel);` (standalone objects only, not children) or `eIterateAllLevels` (all nested objects).
+Filter all: `Iterator.SetState_FilterAll;` - removes all filters.
 
 ### Spatial Iterator (area filter)
 ```
@@ -184,6 +186,13 @@ Finally
   CurrentLib.SchIterator_Destroy(LibIterator);
 End;
 ```
+
+### ISch_Lib Direct Methods
+`ISch_Lib.GetState_SchComponentByLibRef(libRef)` - get component by library reference name.
+`ISch_Lib.PlaceSchComponent` - place component in library.
+`ISch_Lib.RemoveSchComponent(comp)` - remove component from library.
+`ISch_Document.CreateLibraryFromProject` - create library from current project.
+`SchServer.LoadComponentFromDatabaseLibrary` - load component from DBLib.
 
 ### Library Component Info Reader
 ```

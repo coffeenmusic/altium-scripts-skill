@@ -14,12 +14,16 @@ Start server: `Client.StartServer('PCB');`
 
 ### Board Properties
 `Board.FileName` `Board.DisplayUnit` (TUnit: eImperial|eMetric) `Board.XOrigin` `Board.YOrigin` `Board.CurrentLayer` `Board.IsLibrary` `Board.PCBWindow` `Board.I_ObjectAddress`
+`Board.GetPcbComponentByRefDes('U36')` - direct component lookup by reference designator, returns IPCB_Component.
+`Board.PrimPrimDistance(obj1, obj2)` - returns TCoord distance between two primitives.
+`Board.SelectecObjectCount` `Board.SelectecObject[i]` - access selected objects (note: "Selectec" is correct API spelling).
 
 ### Sheet
 `Sheet := Board.PCBSheet;` Props: `Sheet.SheetX` `Sheet.SheetY` `Sheet.SheetHeight` `Sheet.SheetWidth` `Sheet.ShowSheet` `Sheet.LockSheet`
 
 ### Layer Display
 `Board.LayerIsDisplayed[layer] := True/False;` `Board.LayerIsUsed[layer] := True/False;`
+`Board.LayerColor[layer]` - get/set layer color as TColor integer. Example: `Board.LayerColor[String2Layer('Top Layer')]`
 
 ## UNDO SYSTEM
 **Critical pattern** - wrap all modifications:
@@ -131,7 +135,7 @@ Segments: `PointCount` `Segments[i].vx` `.vy` `.Kind` (.cx .cy .Angle1 .Angle2 .
 `Name` `Description` `Rule` (IPCB_Rule) `Primitive1` `Primitive2` (IPCB_Primitive, Primitive2 may be Nil for unary rules)
 
 ### IPCB_Primitive (base)
-`ObjectId` `Layer` `Selected` `BoundingRectangle` (TCoordRect) `I_ObjectAddress` `MoveByXY(dx,dy)` `IsFreePrimitive` `Net`
+`ObjectId` `Layer` `Selected` `BoundingRectangle` (TCoordRect) `BoundingRectangleNoNameCommentForSignals` (TCoordRect - excludes name/comment) `I_ObjectAddress` `MoveByXY(dx,dy)` `IsFreePrimitive` `Net`
 
 ### TCoordRect
 `Left` `Bottom` `Right` `Top` (synonym: X1/Y1/X2/Y2). Init: `CoordRect := TCoordRect;`
@@ -312,9 +316,10 @@ PCBSystemOptions := PCBServer.SystemOptions;
 PCBSystemOptions.BoardCursorType := eCurShapeCross90;  // or eCurShapeBigCross, eCurShapeCross45
 ```
 
-## REFRESH/REDRAW
+## REFRESH/REDRAW/ZOOM
 ```
 Client.SendMessage('PCB:Zoom', 'Action=Redraw', 255, Client.CurrentView);
+Client.SendMessage('PCB:Zoom', 'Action=Selected', 255, Client.CurrentView);  // zoom to selected
 // or
 ResetParameters; AddStringParameter('Action','Redraw'); RunProcess('PCB:Zoom');
 // or
@@ -322,8 +327,11 @@ ResetParameters; AddStringParameter('Action','All'); RunProcess('PCB:Zoom');
 // or
 Board.ViewManager_FullUpdate;
 Board.GraphicalView_ZoomRedraw;
+Board.GraphicalView_ZoomOnRect(x1, y1, x2, y2);  // zoom to bounding rectangle
 Client.CommandLauncher.LaunchCommand('PCB:Zoom', 'Action=Redraw', 255, Client.CurrentView);
 ```
+**Deselect all**: `Client.SendMessage('PCB:DeSelect', 'Scope=All', 255, Client.CurrentView);`
+**Fullscreen**: `RunProcess('Client:FullScreen');`
 
 ## MESSAGES PANEL
 ```

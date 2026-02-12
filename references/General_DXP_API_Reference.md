@@ -244,11 +244,15 @@ GetStringParameter('Color', s);            // selected color value
 
 ### Built-in Functions
 `ShowMessage(str)` `ShowInfo(str)` `ShowWarning(str)` `ShowError(str)` - message dialogs.
-`InputQuery(title, prompt, varStr)` - input dialog, returns Boolean.
+`MessageDlg(msg, msgType, buttons, helpCtx)` - full dialog with icon/buttons. Types: `mtError` `mtWarning` `mtInformation` `mtConfirmation`. Buttons: `[mbOk]` `[mbYes, mbNo]` `[mbOk, mbCancel]`.
+`InputQuery(title, prompt, varStr)` - input dialog, returns Boolean (modifies varStr in-place).
+`InputBox(title, prompt, default)` - input dialog, returns String directly.
 `RunApplication(commandLine)` - execute external program, returns error code (0=success).
 `GetErrorMessage(errorCode)` - human-readable error string.
 `BeginHourGlass` `EndHourGlass` - hourglass cursor.
+`ConfirmNoYes(str)` - yes/no dialog, returns Boolean.
 `FindFiles(path, pattern, attributes, recursive, stringList)` - built-in file search. Uses `faAnyFile` attribute.
+`FileExists(path)` - check if file exists. `DirectoryExists(path)` - check if directory exists.
 `SpecialFolder_MyDesigns` - returns path to My Designs folder.
 `VFS_SetFileEditorName(fileName, editorName)` - set file's associated editor (e.g. 'ProtelNetlist').
 `CreateNewDocumentFromDocumentKind('PCB')` - create new document by kind.
@@ -256,12 +260,17 @@ GetStringParameter('Color', s);            // selected color value
 ### String Functions
 `IntToStr(i)` `StrToInt(s)` `FloatToStr(f)` `BoolToStr(b)`
 `UpperCase(s)` `LowerCase(s)` `Trim(s)` `Length(s)` `Copy(s,start,len)` `Delete(s,start,len)` `Pos(sub,s)` `Inc(i)`
-`ExtractFileName(path)` `ExtractFilePath(path)` `ExtractFileNameFromPath(path)` `ExtractFileExt(path)` `ChangeFileExt(path,ext)`
+`ContainsText(fullStr, subStr)` - case-insensitive substring check (Boolean). `AnsiStartsStr(prefix, str)` `AnsiEndsStr(suffix, str)` - case-sensitive prefix/suffix check.
+`AnsiPos(sub, str)` - returns position (1-based, 0 if not found). Same as `Pos` but ANSI-aware.
+`ExtractFileName(path)` `ExtractFilePath(path)` (includes trailing `\`) `ExtractFileDir(path)` (no trailing `\`) `ExtractFileNameFromPath(path)` `ExtractFileExt(path)` `ChangeFileExt(path,ext)`
 `DirectoryExists(path)` `CreateDir(path)` `StringReplace(s, old, new, MkSet(rfReplaceAll))`
 `Chr(n)` - char from ordinal. `#13` `#10` `#13#10` - CR, LF, CRLF.
 
 ### Date/Time
 `Time` returns TDateTime. `TimeToStr(dt)` converts to string.
+
+### Math Functions
+`DegToRad(degrees)` `RadToDeg(radians)` - angle conversion. `ArcTan(x)` - returns radians.
 
 ### Text File I/O
 ```
@@ -283,6 +292,8 @@ CloseFile(F);
 `Count` `Strings[I]` `Objects[I]` `Items[I]` (same as Strings)
 `Sorted` `Duplicates` (dupIgnore) `CaseSensitive` `Text` (all content as string)
 `SaveToFile(path)` `LoadFromFile(path)` `Filter` (for file dialogs)
+`IndexOf('text')` - returns index or -1 if not found.
+**Name/Value Pairs**: `NameValueSeparator := '='` (default). `Names[I]` `Values[I]` `ValueFromIndex(I)` - access key/value parts. `IndexOfName('key')` - find by key name. Lines formatted as `key=value`.
 
 ### TList
 `Create` `Free` `Add(item)` `Items[I]` `Count`
@@ -357,3 +368,6 @@ Integer color values used in AddStringParameter and object properties. Common: 0
 - **Uses clause**: `Uses IniFiles;` at top of script for external units.
 - **Function results**: `Result := value;` to set return value.
 - **BooleanToString helper**: `If Value = True Then Result := 'True' Else Result := 'False';` (not built-in).
+- **Try/Except**: `Try ... Except ShowMessage('Error: ' + E.Message); End;` - catch runtime errors. Use Try/Finally for cleanup, Try/Except for error handling.
+- **Hide from Run Script dialog**: Add a dummy parameter to prevent a procedure from appearing in the Run Script picker: `Procedure MyHiddenProc(Dummy : Integer);` - only parameterless procedures appear in the dialog.
+- **Command-line execution**: `"C:\Program Files\Altium\AD19\X2.EXE" -RScriptingSystem:RunScript(ProjectName="<ScriptProjectPath>"|ProcName="ProcedureName")` - run script from command line. Note `|` separator (use `^|` in CMD to escape).
