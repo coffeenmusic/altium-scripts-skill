@@ -13,10 +13,18 @@ New doc: `Workspace := GetWorkSpace; Workspace.DM_CreateNewDocument('PCB');` or 
 Start server: `Client.StartServer('PCB');`
 
 ### Board Properties
-`Board.FileName` `Board.DisplayUnit` (TUnit: eImperial|eMetric) `Board.XOrigin` `Board.YOrigin` `Board.CurrentLayer` `Board.IsLibrary` `Board.PCBWindow` `Board.I_ObjectAddress`
+`Board.FileName` `Board.DisplayUnit` (TUnit: eImperial|eMetric) `Board.XOrigin` `Board.YOrigin` `Board.CurrentLayer` (r/w TLayer) `Board.IsLibrary` `Board.PCBWindow` `Board.I_ObjectAddress` `Board.SnapGridSize` `Board.XCursor` `Board.YCursor` `Board.BoundingRectangleChildren`
 `Board.GetPcbComponentByRefDes('U36')` - direct component lookup by reference designator, returns IPCB_Component.
 `Board.PrimPrimDistance(obj1, obj2)` - returns TCoord distance between two primitives.
 `Board.SelectecObjectCount` `Board.SelectecObject[i]` - access selected objects (note: "Selectec" is correct API spelling).
+`Board.NewUndo()` - create undo entry (alternative to PreProcess/PostProcess for simple changes).
+`Board.MechanicalPairs.Count` `Board.MechanicalPairs.PairDefined(layer1, layer2)` `Board.MechanicalPairs.LayerUsed(layer)` - mech layer pair info.
+`Board.LayerName(layer)` - get layer name string from TLayer.
+`Board.BoardOutline.PointInPolygon(x, y)` - Boolean point-in-polygon test.
+`Board.FindDominantRuleForObject(obj, eRule_*)` - get dominant rule for object. `Board.FindDominantRuleForObjectPair(obj1, obj2, eRule_*)` - for a pair.
+`Board.DispatchMessage(Board.I_ObjectAddress, c_Broadcast, PCBM_BoardRegisteration, Obj.I_ObjectAddress)` - alternative to SendMessageToRobots.
+`Board.ViewManager_GraphicallyInvalidatePrimitive(obj)` - invalidate specific primitive display.
+`Board.ViewManager_UpdateLayerTabs` - refresh layer tab display after layer visibility changes.
 
 ### Sheet
 `Sheet := Board.PCBSheet;` Props: `Sheet.SheetX` `Sheet.SheetY` `Sheet.SheetHeight` `Sheet.SheetWidth` `Sheet.ShowSheet` `Sheet.LockSheet`
@@ -39,13 +47,15 @@ End;
 - Multiple pairs = multiple undo levels
 - **Creating**: `Board.AddPCBObject(Obj); PCBServer.SendMessageToRobots(Board.I_ObjectAddress, c_Broadcast, PCBM_BoardRegisteration, Obj.I_ObjectAddress);`
 - **Modifying**: `PCBServer.SendMessageToRobots(Obj.I_ObjectAddress, c_Broadcast, PCBM_BeginModify, c_NoEventData);` ...change props... `PCBServer.SendMessageToRobots(Obj.I_ObjectAddress, c_Broadcast, PCBM_EndModify, c_NoEventData);`
+- **Modifying (shorthand)**: `Obj.BeginModify;` ...change props... `Obj.EndModify;` (equivalent to SendMessageToRobots pattern)
 - **Deleting**: collect objects in TInterfaceList first, then `Board.RemovePCBObject(Obj);`
+- **Destroying**: `PCBServer.DestroyPCBObject(Obj);` - free object memory (use after RemovePCBObject)
 
 ## OBJECT FACTORY
 `Obj := PCBServer.PCBObjectFactory(objectType, eNoDimension, eCreate_Default);`
 
 ### TObjectId Constants
-`eNoObject` `eArcObject` `ePadObject` `eViaObject` `eTrackObject` `eTextObject` `eFillObject` `eConnectionObject` `eNetObject` `eComponentObject` `ePolyObject` `eDimensionObject` `eCoordinateObject` `eClassObject` `eRuleObject` `eFromToObject` `eViolationObject` `eEmbeddedObject` `eTraceObject` `eSpareViaObject` `eBoardObject` `eBoardOutlineObject` `eRegionObject` `eComponentBodyObject`
+`eNoObject` `eArcObject` `ePadObject` `eViaObject` `eTrackObject` `eTextObject` `eFillObject` `eConnectionObject` `eNetObject` `eComponentObject` `ePolyObject` `eDimensionObject` `eCoordinateObject` `eClassObject` `eRuleObject` `eFromToObject` `eViolationObject` `eEmbeddedObject` `eTraceObject` `eSpareViaObject` `eBoardObject` `eBoardOutlineObject` `eRegionObject` `eComponentBodyObject` `eSplitPlaneObject` `eRoomObject`
 
 ## OBJECT PROPERTIES
 
@@ -54,9 +64,13 @@ End;
 
 ### IPCB_Arc
 `XCenter` `YCenter` `Radius` `LineWidth` `StartAngle` `EndAngle` `Layer`
+`StartX` `StartY` `EndX` `EndY` (computed endpoints of arc)
 
 ### IPCB_Via
 `X` `Y` `Size` `HoleSize` `LowLayer` `HighLayer` `Net` (IPCB_Net)
+`IsTenting` (Boolean) `IsTenting_Top` `IsTenting_Bottom` `Mode` (ePadMode_Simple|ePadMode_LocalStack|ePadMode_ExternalStack) `IntersectLayer(layer)` (Boolean - does via pass through layer?) `IsConnectedToPlane[layer]` (Boolean)
+`SizeOnLayer[layer]` (TCoord, per-layer via size when Mode <> ePadMode_Simple)
+Explicit getters/setters: `GetState_IsTenting_Top()` `SetState_IsTenting_Top(bool)` `GetState_IsTenting_Bottom()` `SetState_IsTenting_Bottom(bool)`
 Cache: see TPadCache below.
 
 ### IPCB_Pad
@@ -68,6 +82,9 @@ Cache: see TPadCache below.
 **TShape**: `eNoShape` `eRounded` `eRectangular` `eOctagonal` `eCircleShape` `eArcShape` `eTerminator` `eRoundRectShape` `eRotatedRectShape`
 **THoleType**: `eRoundHole` `eSquareHole` `eSlotHole`
 Pad descriptor: `Pad.GetState_PinDescriptorString`
+`Pad.BoundingRectangleOnLayer(layer)` (TCoordRect for specific layer) `Pad.Layer_V6` (V6 layer property) `Pad.PasteMaskExpansion` (direct read, alternative to cache)
+**Full Stack per-layer** (IPCB_Pad2): `XSizeOnLayer[layer]` `YSizeOnLayer[layer]` `XStackSizeOnLayer[layer]` `YStackSizeOnLayer[layer]` `XPadOffset[layer]` `YPadOffset[layer]`
+**Slot hole**: `HoleWidth` (when `HoleType = eSlotHole`)
 
 ### TPadCache (shared by Pad & Via)
 ```
@@ -90,23 +107,33 @@ Additional cache props: `PlaneConnectionStyle` `PlaneConnectionStyleValid` `Plan
 `X1Location` `Y1Location` `X2Location` `Y2Location` `Layer` `Rotation`
 
 ### IPCB_Text
-`XLocation` `YLocation` `Layer` `Text` `Size` (height)
+`XLocation` `YLocation` `Layer` `Text` `Size` (height) `Width` (stroke width) `Rotation` (TAngle, degrees) `FontID` (TFontID)
 TrueType: `UseTTFonts` `Bold` `Italic` `FontName`
-Inverted: `Inverted` `InvertedTTTextBorder`
+Inverted: `Inverted` `InvertedTTTextBorder` `UseInvertedRectangle` `InvRectHeight` `InvRectWidth` `TTFOffsetFromInvertedRect`
+Barcode: `TextKind` (`eText_BarCode`) `BarCodeFullHeight` `BarCodeXMargin` `BarCodeYMargin` `BarCodeRenderMode` (`eRender_ByMinWidth`) `BarCodeMinWidth` `BarCodeFullWidth`
+Designator: `GetDesignatorDisplayString` (resolved display string) `GetState_Mirror` (Boolean, mirrored state)
+Methods: `RotateBy(angle)` (rotate text by delta angle)
 
 ### IPCB_Component (inherits IPCB_Group)
-`X` `Y` `Layer` `Rotation` (TAngle, degrees) `Height` `SourceDesignator`
+`X` `Y` `Layer` `Rotation` (TAngle, degrees) `Height` `SourceDesignator` `Pattern` (footprint name) `UniqueId`
 Name/Comment: `NameOn` `Name.Text` `Name.XLocation` `Name.YLocation` `CommentOn` `Comment.Text` `Comment.XLocation` `Comment.YLocation`
+`Name.Replicate` `Comment.Replicate` (clone name/comment text objects) `Name.RotateBy(angle)` `Comment.RotateBy(angle)`
+`ChangeNameAutoposition(pos)` (TTextAutoposition) `GetState_NameAutoPos` `NameAutoPosition` (read current autoposition)
+`LockStrings` (Boolean, lock name/comment position)
+`MoveToXY(x, y)` `BoundingRectangleNoNameComment` (TCoordRect, excludes designator/comment from bounds)
+`PrimitiveLock` (Boolean, lock component primitives) `ComponentKind` (`eComponentKind_Graphical` for non-BOM graphical components)
 Add child: `Comp.AddPCBObject(childObj); PCBServer.SendMessageToRobots(Comp.I_ObjectAddress, c_Broadcast, PCBM_BoardRegisteration, childObj.I_ObjectAddress);`
+**TTextAutoposition**: `eAutoPos_Manual` `eAutoPos_TopLeft` `eAutoPos_CenterLeft` `eAutoPos_BottomLeft` `eAutoPos_TopCenter` `eAutoPos_CenterCenter` `eAutoPos_BottomCenter` `eAutoPos_TopRight` `eAutoPos_CenterRight` `eAutoPos_BottomRight`
 
 ### IPCB_Region
-`Layer` `Name` `Kind` (TRegionKind: `eRegionKind_Copper` `eRegionKind_Cutout` `eRegionKind_NamedRegion`)
+`Layer` `Name` `Kind` (TRegionKind: `eRegionKind_Copper` `eRegionKind_Cutout` `eRegionKind_NamedRegion` `eRegionKind_BoardCutout`)
 Contour: `MainContour` (IPCB_Contour) `HoleCount` `Holes[i]` (IPCB_Contour)
 `SetOutlineContour(contour)` `GeometricPolygon.AddContourIsHole(Nil, True)`
 Parent checks: `InPolygon` `InComponent` `InNet` `.Polygon` `.Component` `.Net` `.Descriptor`
 
 ### IPCB_Contour
-`Count` (vertex count, set to allocate) `X[i]` `Y[i]` (1-based index) `Translate(dx,dy)` `Replicate`
+`Count` (vertex count, set to allocate) `X[i]` `Y[i]` (1-based index) `Translate(dx,dy)` `Replicate` `Clear` `AddPoint(x,y)`
+Factory: `Contour := PCBServer.PCBContourFactory;` - create empty contour.
 
 ### IPCB_Polygon
 `Layer` `Detail` `Net` `PolyHatchStyle` `PourOver` `RemoveDead` `Grid` `TrackSize` `UseOctagons`
@@ -120,22 +147,40 @@ Segments: `PointCount` `Segments[i].vx` `.vy` `.Kind` (.cx .cy .Angle1 .Angle2 .
 `X1` `Y1` `X2` `Y2` `Net` (.Name)
 
 ### IPCB_Net
-`Name`
+`Name` `ShowNetConnects` `HideNetConnects` (show/hide ratsnest for this net)
+`ConnectivelyInValidate` (force net connectivity recalculation)
+`Net.AddPCBObject(Prim)` - add primitive to net. `Net.RemovePCBObject(Prim)` - remove from net.
+Iterate members: `Net.GroupIterator_Create` (see Group Iterator section)
 
 ### IPCB_Embedded
 `Name` `Description`
 
 ### IPCB_ComponentBody
-`Name` `Kind` (TRegionKind) `GetOverallHeight`
+`Name` `Kind` (TRegionKind) `GetOverallHeight` `OverallHeight` `StandoffHeight` `Model` `Model.ModelType`
+`ModelFactory_UpdateModel(Radius, Param, ModelType)` - update/recreate 3D model.
+**e3DModelType**: `e3DModelType_Extruded` `e3DModelType_Cylinder` `e3DModelType_Sphere` `e3DModelType_Generic`
+
+### IPCB_Coordinate
+`LineWidth` `TextHeight` `TextWidth` `UseTTFonts` `Track1` `Track2` (sub-track primitives) `Text` (sub-text primitive)
 
 ### IPCB_FromTo
 `FromPad` `ToPad` `NetName` (all strings)
+
+### IPCB_SplitPlane
+`Layer` `Net` (internal plane split region). TObjectId = `eSplitPlaneObject`.
+
+### IPCB_ObjectClass
+`Name` `MemberName[i]` `MemberKind` `IsMember(Net)` (Boolean, test net membership in class)
 
 ### IPCB_Violation
 `Name` `Description` `Rule` (IPCB_Rule) `Primitive1` `Primitive2` (IPCB_Primitive, Primitive2 may be Nil for unary rules)
 
 ### IPCB_Primitive (base)
 `ObjectId` `Layer` `Selected` `BoundingRectangle` (TCoordRect) `BoundingRectangleNoNameCommentForSignals` (TCoordRect - excludes name/comment) `I_ObjectAddress` `MoveByXY(dx,dy)` `IsFreePrimitive` `Net`
+`Moveable` (Boolean, lock/unlock movement) `TearDrop` (Boolean) `InDimension` (Boolean) `InCoordinate` (Boolean) `Replicate` (clone object) `SetState_Selected(True/False)` `GraphicallyInvalidate` (force redraw) `Board` (parent IPCB_Board ref)
+`InComponent` `InPolygon` `InNet` `.Component` `.Polygon` `.Net` (parent accessors)
+`IsTestpoint_Top` `IsTestpoint_Bottom` `IsAssyTestpoint_Top` `IsAssyTestpoint_Bottom` (Boolean, testpoint markers)
+`UnionIndex` (Integer, objects with same index belong to same union)
 
 ### TCoordRect
 `Left` `Bottom` `Right` `Top` (synonym: X1/Y1/X2/Y2). Init: `CoordRect := TCoordRect;`
@@ -147,9 +192,10 @@ Segments: `PointCount` `Segments[i].vx` `.vy` `.Kind` (.cx .cy .Angle1 .Angle2 .
 Iterator := Board.BoardIterator_Create;
 Iterator.AddFilter_ObjectSet(MkSet(eTrackObject));  // or MkSet(obj1, obj2)
 Iterator.AddFilter_LayerSet(AllLayers);              // or MkSet(eTopLayer) or LayerSet.AllLayers
-Iterator.AddFilter_Method(eProcessAll);
-// Alt: Iterator.SetState_FilterAll;  // no filters
-// Alt: Iterator.AddFilter_IPCB_LayerSet(LayerSet.AllLayers);
+Iterator.AddFilter_Method(eProcessAll);           // or eProcessFree (free primitives only)
+// Alt: Iterator.SetState_FilterAll;                // no filters (pass everything)
+// Alt: Iterator.AddFilter_AllLayers;               // shorthand for AllLayers filter
+// Alt: Iterator.AddFilter_IPCB_LayerSet(LayerSet.AllLayers);  // or LayerSet.SignalLayers
 
 Obj := Iterator.FirstPCBObject;
 While Obj <> Nil Do Begin
@@ -158,7 +204,8 @@ While Obj <> Nil Do Begin
 End;
 Board.BoardIterator_Destroy(Iterator);
 ```
-`MkSet()` creates TObjectSet or TLayerSet. `AllLayers` and `AllObjects` are predefined sets. `SignalLayers` `InternalPlanes` are predefined layer sets. `SetUnion(set1,set2)` combines sets. `InSet(layer, layerSet)` tests membership. `Include(objectSet, objectId)` adds to set.
+`MkSet()` creates TObjectSet or TLayerSet. `AllLayers` `AllObjects` `AllPrimitives` are predefined sets. `SignalLayers` `InternalPlanes` are predefined layer sets. `SetUnion(set1,set2)` combines sets. `InSet(layer, layerSet)` tests membership. `Include(objectSet, objectId)` adds to set.
+IPCB_LayerSet object: `LayerSet.SignalLayers` `LayerSet.AllLayers` (class-level ready-made sets). `LSet.Contains(layer)` tests membership.
 
 ### Spatial Iterator
 ```
@@ -212,13 +259,15 @@ End;
 
 ### Layer Stack
 ```
-TheLayerStack := Board.LayerStack;
+TheLayerStack := Board.LayerStack;        // or Board.LayerStack_V7 (for AD14+, returns IPCB_LayerStack_V7)
 LayerObj := TheLayerStack.FirstLayer;
-// LayerObj.NextLayer returns TLayer
+// LayerObj.NextLayer returns IPCB_LayerObject
 // TheLayerStack.LayerObject(layer) returns IPCB_LayerObject
 // TheLayerStack.LayerObject[layer] also works
+// TheLayerStack.LayersInStackCount (total layers), .SignalLayerCount (signal layers only)
 ```
 Mech layer extra (IPCB_MechanicalLayer): `LinkToSheet` `MechanicalLayerEnabled` `DisplayInSingleLayerMode`
+V7 types: `IPCB_LayerStack_V7` `IPCB_LayerObject_V7` - used for typed variable declarations with V7 layer API.
 
 ### Drill Layer Pairs
 ```
@@ -238,6 +287,22 @@ Other: `eKeepOutLayer` `eDrillGuideLayer` `eDrillDrawingLayer` `eConnectLayer` `
 Ranges: `MinLayer` `MaxLayer` (signal range for loops)
 Convert: `Layer2String(layer)` `String2Layer(str)`
 Plane ops: `Board.InvalidatePlane(layer)` `Board.ValidateInvalidPlanes` `Board.GraphicalView_ZoomRedraw`
+
+### LayerSet Creation
+```
+LayerSet := LayerSet.CreateLayerSet;          // empty set
+LayerSet.IncludeSignalLayers;                 // add all signal layers
+LayerSet.Include(eTopLayer);                  // add specific layer
+SetOfLayers := SetOfLayers.IncludeSignalLayers;  // variant syntax
+SetOfLayers.Include(layer);
+```
+
+### ILayer Helpers
+`ILayer.MechanicalLayer(i)` - get TLayer for mechanical layer index (1-32).
+`ILayer.IsSignalLayer(layerID)` - Boolean test if layer is signal layer.
+`Board.LayerStack.LayerObject_V7(layer)` - get IPCB_LayerObject_V7 for V7 layer API.
+`LayerObj.V7_LayerID` - get V7 layer identifier from layer object.
+`LayerObj.IsDisplayed[Board]` - get/set layer display state (Boolean).
 
 ## BOARD OUTLINE
 ```
@@ -265,11 +330,39 @@ Common props: `Rule.Name` `Rule.Comment` `Rule.UniqueId` `Rule.RuleKind` `Rule.N
 ### TRuleLayerKind
 `eRuleLayerKind_SameLayer` `eRuleLayerKind_AdjacentLayer`
 
+### Rule Common Properties
+`Rule.Name` `Rule.Comment` `Rule.UniqueId` `Rule.Enabled` `Rule.DRCEnabled` (Boolean)
+`Rule.Scope1Expression` `Rule.Scope2Expression` (query expression strings)
+`Rule.ActualCheck(obj1, obj2)` - returns IPCB_Violation if rule violated, Nil if OK (obj2 can be Nil for unary rules).
+
 ### Width Constraint (IPCB_MaxMinWidthConstraint)
 `MinWidth(layer)` `MaxWidth(layer)` `FavoredWidth(layer)` (layer is TLayer, use `(L)` not `[L]` in DelphiScript)
 
-### Confinement (IPCB_ConfinementConstraint)
+### Clearance (IPCB_ClearanceConstraint)
+`Gap` (TCoord, minimum clearance distance)
+
+### Component Clearance (IPCB_ComponentClearanceConstraint)
+`Gap` (TCoord, horizontal clearance) `VerticalGap` (TCoord, vertical/height clearance)
+
+### Via Style (IPCB_RoutingViaStyleRule)
+`PreferedWidth` `MinWidth` `MaxWidth` (via diameter) `PreferedHoleWidth` `MinHoleWidth` `MaxHoleWidth` (drill size)
+
+### Paste Mask Expansion (IPCB_PasteMaskExpansionRule)
+`Expansion` (TCoord) `DRCEnabled` (Boolean)
+
+### Power Plane Connect (IPCB_PowerPlaneConnectStyleRule)
+`PlaneConnectStyle` (`ePlaneNoConnect` `ePlaneReliefConnect` `ePlaneDirectConnect`)
+
+### Polygon Connect (IPCB_PolygonConnectStyleRule)
+`ConnectStyle` (connection style for polygon pours)
+
+### Short Circuit (IPCB_ShortCircuitConstraint)
+`Allowed` (Boolean, whether short circuit is allowed)
+
+### Confinement / Room (IPCB_ConfinementConstraint)
 `BoundingRect` (TCoordRect) `ConstraintLayer` `Kind` (TConfinementStyle: `eConfineOut`)
+`PointCount` `Segments[i]` (TPolySegment - vx, vy, Kind, cx, cy, Radius, Angle1, Angle2)
+Room creation from polygon: use `PCB:ConvertSelected` with `Action='TO_POLYGON'`, then create room with matching contour.
 
 ### Rule Interfaces List
 `IPCB_ClearanceConstraint` `IPCB_ParallelSegmentConstraint` `IPCB_MaxMinWidthConstraint` `IPCB_MaxMinLengthConstraint` `IPCB_MatchedNetLengthsConstraint` `IPCB_DaisyChainStubLengthConstraint` `IPCB_PowerPlaneConnectStyleRule` `IPCB_PolygonConnectStyleRule` `IPCB_RoutingTopologyRule` `IPCB_RoutingPriorityRule` `IPCB_RoutingLayersRule` `IPCB_RoutingCornerStyleRule` `IPCB_RoutingViaStyleRule` `IPCB_PowerPlaneClearanceRule` `IPCB_SolderMaskExpansionRule` `IPCB_PasteMaskExpansionRule` `IPCB_ShortCircuitConstraint` `IPCB_BrokenNetRule` `IPCB_ViasUnderSMDConstraint` `IPCB_MaximumViaCountRule` `IPCB_MinimumAnnularRing` `IPCB_AcuteAngle` `IPCB_ConfinementConstraint` `IPCB_ComponentClearanceConstraint` `IPCB_ComponentRotationsRule` `IPCB_PermittedLayersRule` `IPCB_SignalStimulus` `IPCB_MaxOvershootFall` `IPCB_MaxOvershootRise` `IPCB_MaxUndershootFall` `IPCB_MaxUndershootRise` `IPCB_RuleMaxMinImpedance` `IPCB_RuleMinSignalTopValue` `IPCB_RuleMaxSignalBaseValue` `IPCB_RuleFlightTime_RisingEdge` `IPCB_RuleFlightTime_FallingEdge` `IPCB_RuleMaxSlopeRisingEdge` `IPCB_RuleMaxSlopeFallingEdge` `IPCB_NetsToIgnoreRule` `IPCB_SMDToCornerConstraint` `IPCB_RuleSupplyNets` `IPCB_MaxMinHoleSizeConstraint` `IPCB_TestPointStyleRule` `IPCB_TestPointUsage` `IPCB_UnConnectedPinRule` `IPCB_SMDToPlaneConstraint` `IPCB_SMDNeckDownConstraint` `IPCB_LayerPairsRule` `IPCB_FanoutControlRule` `IPCB_MaxMinHeightConstraint` `IPCB_DifferentialPairsRoutingRule`
@@ -305,6 +398,7 @@ Board.ChooseLocation(x, y, 'Choose point');
 
 // Select at XY with disambiguation
 Comp := Board.GetObjectAtXYAskUserIfAmbiguous(x, y, MkSet(eComponentObject), AllLayers, eEditAction_Select);
+// eEditAction_Select can also be used as 3rd param to GetObjectAtCursor
 
 // Rectangle selection
 Board.ChooseRectangleByCorners('First corner', 'Final corner', x1, y1, x2, y2)  // returns Boolean
@@ -314,6 +408,9 @@ Board.ChooseRectangleByCorners('First corner', 'Final corner', x1, y1, x2, y2)  
 ```
 PCBSystemOptions := PCBServer.SystemOptions;
 PCBSystemOptions.BoardCursorType := eCurShapeCross90;  // or eCurShapeBigCross, eCurShapeCross45
+PCBSystemOptions.DoOnlineDRC;                          // Boolean, online DRC state
+PCBSystemOptions.RotationStep;                         // TAngle, current rotation angle step
+PCBServer.SystemOptions.LayerColors[layer];            // get/set layer color (TColor)
 ```
 
 ## REFRESH/REDRAW/ZOOM
@@ -332,6 +429,10 @@ Client.CommandLauncher.LaunchCommand('PCB:Zoom', 'Action=Redraw', 255, Client.Cu
 ```
 **Deselect all**: `Client.SendMessage('PCB:DeSelect', 'Scope=All', 255, Client.CurrentView);`
 **Fullscreen**: `RunProcess('Client:FullScreen');`
+**Post message**: `Client.PostMessage('ProcessName', 'Params', Length(Params), Client.CurrentView)` - async message to client.
+**Launch command**: `Client.CommandLauncher.LaunchCommand('ProcessName', 'Params', 255, Client.CurrentView);`
+**Client as IProcessLauncher**: `Client` implements `IProcessLauncher` interface.
+**Unique IDs**: `GetWorkSpace.DM_GenerateUniqueID` - generate unique ID string. `GetHashID_ForString(str)` - convert string to hash integer.
 
 ## MESSAGES PANEL
 ```
@@ -373,6 +474,46 @@ ExtractFileName(path)  ExtractFilePath(path)
 `BeginHourGlass` `EndHourGlass`
 `Screen.Cursor := crHourGlass;` / `Screen.Cursor := crArrow;`
 
+### Progress Bar
+```
+InitStatus;                        // initialize progress bar
+UpdateStatus('Processing...', i, total);  // update with message and progress (i of total)
+FinishStatus;                      // close progress bar
+```
+
+### TIniFile (persistent settings storage)
+```
+IniFile := TIniFile.Create(ClientAPI_SpecialFolder_AltiumApplicationData + '\MyScript.ini');
+Value := IniFile.ReadBool('Section', 'Key', DefaultValue);
+IniFile.WriteBool('Section', 'Key', Value);
+Value := IniFile.ReadInteger('Section', 'Key', DefaultValue);
+IniFile.WriteInteger('Section', 'Key', Value);
+Value := IniFile.ReadString('Section', 'Key', DefaultValue);
+IniFile.WriteString('Section', 'Key', Value);
+IniFile.Free;
+```
+`ClientAPI_SpecialFolder_AltiumApplicationData` - path to Altium app data folder.
+`SpecialFolder_AltiumSystem` - path to Altium system directory (e.g. for `PrefFolder.ini`).
+
+## VARIANT SYSTEM (DXP Workspace Manager)
+```
+WSM := GetWorkSpace;
+Project := WSM.DM_FocusedProject;
+Variant := Project.DM_CurrentProjectVariant;           // current variant
+FlatDoc := Project.DM_DocumentFlattened;                // flattened schematic view
+CompCount := FlatDoc.DM_ComponentCount;
+Comp := FlatDoc.DM_Components(i);
+Variation := Variant.DM_FindComponentVariationByUniqueId(Comp.DM_UniqueId);
+If Variation <> Nil Then
+    If Variation.DM_VariationType = eVariation_NotFitted Then ...;
+```
+**Variation types**: `eVariation_NotFitted` `eVariation_Alternate`
+Additional project props: `Project.DM_ProjectVariantCount` `Project.DM_ProjectVariants(i)` (returns IProjectVariant) `Project.DM_ProjectFileName`
+`IProjectVariant.DM_Description` - variant name/description.
+`Component.DM_PhysicalDesignator` - physical refdes string (e.g. 'R1').
+`CompVariation.DM_VariationKind` (alternative to `DM_VariationType`)
+Compile project: `ResetParameters; AddStringParameter('Action','Compile'); AddStringParameter('ObjectKind','Project'); RunProcess('WorkspaceManager:Compile');`
+
 ## DELPHI COLLECTIONS
 ```
 // TInterfaceList (for safe object deletion)
@@ -393,10 +534,17 @@ SL.Add(str);
 SL.Sorted := True;
 SL.Duplicates := dupIgnore;  // or dupAccept
 SL.Count  SL.Strings[i]  SL.Text
-SL.SaveToFile(fn);
+SL.SaveToFile(fn);  SL.LoadFromFile(fn);
 SL.Find(str, index)  // returns Boolean
-SL.Delete(i)  SL.Insert(i, str)
+SL.Delete(i)  SL.Insert(i, str)  SL.IndexOf(str)
+SL.Sort  SL.Move(fromIdx, toIdx)  SL.InsertObject(idx, str, obj)
 SL.Clear  SL.Free
+// Dictionary pattern (Name=Value pairs):
+SL.NameValueSeparator := '=';  // default
+SL.IndexOfName('key')  SL.ValueFromIndex[i]  SL.Names[i]
+SL.Values['key'] := 'value';  // set by key
+SL.Put(i, 'newStr');  // replace string at index
+SL.AddObject(str, obj);  SL.Objects[i];  // store/retrieve associated objects (lightweight key-value-object store)
 ```
 
 ## TSaveDialog
@@ -449,6 +597,47 @@ AddStringParameter('TopSignal','16711680');  // decimal RGB
 RunProcess('PCB:PCBChangeSystemColors');
 ```
 
+### Selection/Query Operations
+```
+// Deselect all
+ResetParameters; AddStringParameter('Scope','All'); RunProcess('PCB:DeSelect');
+// or: Client.SendMessage('PCB:DeSelect', 'Scope=All', 255, Client.CurrentView);
+
+// Delete selected objects
+RunProcess('PCB:Clear');
+
+// Convert selected to polygon
+ResetParameters; AddStringParameter('Action','TO_POLYGON'); RunProcess('PCB:ConvertSelected');
+
+// Run query filter (select objects matching expression)
+ResetParameters; AddStringParameter('Index','0');
+AddStringParameter('Expression','IsTrack And OnTopLayer');
+RunProcess('PCB:RunQuery');
+```
+
+### Query Expressions (for PCB:RunQuery, rule scopes, filter panels)
+**Object type**: `IsTrack` `IsArc` `IsVia` `IsPad` `IsText` `IsRegion` `IsFill` `IsRoom` `IsComponent` `IsPoly` `IsDimension` `IsCoordinate` `IsConnection` `IsSelected`
+**Layer**: `OnTopLayer` `OnBottomLayer` `OnMultiLayer` `OnMid` `OnPlane` `OnMechanical` `OnSilkscreen` `OnSolderMask` `OnPaste` `OnSignal`
+**Scope**: `InComponent('U1')` `InNet('GND')` `InRegion(x1,y1,x2,y2)`
+**Other**: `IsBoardCutoutRegion`
+**Logical**: `And` `Or` `Not` - combine predicates: `IsTrack And OnTopLayer And Not InComponent('*')`
+**Comparison**: `Width > 10` `HoleSize = 20` (values in mils by default)
+**Mask mode** (via Client.PostMessage): `Client.PostMessage('PCB:RunQuery', 'Apply=True|Expr=IsSelected|Mask=True', Length(params), Client.CurrentView)` - `Mask=True` applies as filter mask.
+
+### Object Display Quality (Final/Draft/Hidden)
+```
+ResetParameters;
+AddStringParameter('TrackQuality', 'Final');  // or 'Draft' or 'Hidden'
+RunProcess('Pcb:SetupPreferences');
+```
+Object type parameters: `TrackQuality` `ArcQuality` `PadQuality` `ViaQuality` `SolidRegionQuality` `FillQuality` `StringQuality` `ComponentQuality` `PolygonQuality` `3DBodyQuality` `DimensionQuality` `RoomQuality` `CoordQuality`
+
+### Unions
+```
+// Create union from selected objects
+ResetParameters; AddStringParameter('Action','CreateUnion'); RunProcess('PCB:ManageUnions');
+```
+
 ### Common Dialog
 ```
 ResetParameters;
@@ -464,10 +653,17 @@ GetStringParameter('Result')  GetStringParameter('Color')
 - `Var` section declares variables before `Begin`
 - String concat with `+`, newline `#13` or `#13#10`
 - Boolean: `True`/`False`
-- Integer ops: `Inc(x)` `Trunc(real)` `Ord(enum)`
-- Float: `FloatToStr()` `StrToInt()` `IntToStr()`
-- String: `UpperCase()` `Copy()` `Length()` `Pos()`
-- Math: `Sin()` `Cos()` `Sqrt()` `PI` `Degrees2Radians()`
+- Integer ops: `Inc(x)` `Trunc(real)` `Ord(enum)` `StrToInt64()` `Int()` (truncate float to int)
+- Float: `FloatToStr()` `StrToInt()` `IntToStr()` `FloatToStrF(value, format, precision, digits)` `DecimalSeparator` (system locale char)
+- String: `UpperCase()` `Copy()` `Length()` `Pos()` `Trim()` `StringReplace()`
+- Math: `Sin()` `Cos()` `Sqrt()` `PI` `Degrees2Radians()` `Power(base, exp)` `ArcTan2(y, x)`
+- Checks: `Assigned(obj)` (Boolean, nil test - safer than `<> Nil` for some objects)
+- Timing: `GetTickCount` (milliseconds since boot, for performance measurement) `Sleep(ms)` (pause execution)
+- Files: `ForceDirectories(path)` `FileExists(path)` `DirectoryExists(path)` `ExtractFileDir(path)` `ExtractFileExt(path)` `SetLength(str, len)`
+- Math extra: `Sqr(x)` (x squared) `Exp(x)` `Ln(x)` `Floor(x)` `Round(x)`
+- String extra: `AnsiPos(sub, str)` `AnsiCompareText(s1, s2)` (case-insensitive, 0=equal) `AnsiUpperCase(str)` `LastDelimiter(delims, str)` `Delete(str, start, count)` `VarToStr(variant)`
+- Dialog: `MessageDlg(msg, mtType, buttons, helpCtx)` - types: `mtInformation` `mtWarning` `mtError` `mtConfirmation`
+- FloatToStrF formats: `ffFixed` `ffGeneral`
 - Case: `Case x Of val1: ...; val2: ...; End;`
 - Type casting by assignment (no explicit casts in script)
 - `&&` used for logical AND in some scripts (alongside `And`)
