@@ -7,7 +7,7 @@ description: Expert guidance for writing Altium Designer DelphiScript automation
 
 ## Overview
 
-This skill provides complete API reference documentation for writing Altium Designer DelphiScript automation scripts. Three compact reference files contain all interface definitions, object properties, method signatures, enumerations, and patterns needed to write any Altium script.
+This skill provides complete API reference documentation for writing Altium Designer DelphiScript automation scripts. Three compact reference files contain interface definitions, object properties, method signatures, enumerations, and patterns needed to write any Altium script. A separate class structures file provides complete member listings for interfaces when the API references don't have enough detail.
 
 ## API Reference Files
 
@@ -22,11 +22,15 @@ Schematic editor API. Covers: SchServer, document access, coordinate units, undo
 ### `references/General_DXP_API_Reference.md`
 Everything else. Covers: DXP Client framework (IClient, IServerRecord, IServerProcess, IServerDocument, IServerModule), Workspace Manager interfaces (IWorkSpace, IProject, IDocument, IComponent, INet, IPin, IPart), Messages Manager, Integrated Library Manager, Model Type Manager, FPGA Configuration, complete process system catalog (PCB color/layer, SCH operations, PDF publishing, netlist generation, waveform import, common dialogs), general DelphiScript utilities (file I/O, TIniFile, TXceedZip, FindFiles, RunApplication), VCL form structure, VCL components, DelphiScript language notes.
 
+### `references/classes/Altium_Class_Structures.md`
+Complete interface member listings from Altium Script IDE. Use when you need the full property/method list for a specific interface that isn't fully covered in the API references above. Base class members are documented once (e.g., `IPCB_Primitive`); derived classes list only their unique additions. Currently covers: IPCB_Primitive, IPCB_Board, IPCB_DifferentialPair, IPCB_Rule, IPCB_DifferentialPairsRoutingRule.
+
 ## Workflow
 
 1. **Determine scope**: Is the task PCB, schematic, or general/cross-domain?
 2. **Read the relevant API reference(s)**: Usually 1-2 files cover the need. For cross-domain tasks (e.g., iterating SCH components then modifying PCB), read both.
-3. **Write the script**: Combine the documented patterns, interfaces, and properties to build the solution. The references contain all interface signatures, property types, enum values, and code patterns needed.
+3. **If you need a specific property/method not in the API references**: Check `references/classes/Altium_Class_Structures.md` for complete member listings. Remember that derived classes inherit from their base — check both the class and its parent.
+4. **Write the script**: Combine the documented patterns, interfaces, and properties to build the solution.
 
 ## Complete Script Templates
 
