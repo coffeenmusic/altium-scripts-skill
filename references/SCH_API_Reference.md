@@ -16,6 +16,9 @@ Start server: `Client.StartServer('SCH');`
 Check doc type: `CurrentSch.ObjectID <> eSchLib` (eSchLib=library doc). Also: `Client.CurrentView.OwnerDocument.Kind` returns 'SCH'|'SCHLIB'.
 `CurrentSch.DocumentName` - filename. `CurrentSch.IsLibrary` - boolean check.
 `CurrentSch.OwnerDocument.DocumentName` - owner doc name.
+`CurrentSch.VisibleGridSize` (TCoord) - current visible grid size. `CurrentSch.GetState_SheetSizeY` (TCoord) - sheet height.
+`CurrentSch.RegisterSchObjectInContainer(Obj)` - register object in doc container (alternative to AddSchObject + robot message).
+`cInternalPrecision` - constant divisor for converting internal coords to mils (e.g. `Location.X / cInternalPrecision`).
 
 ## UNDO SYSTEM
 **Critical pattern** - wrap all modifications:
@@ -45,7 +48,7 @@ End;
 Alternative: `SchServer.SchObjectFactory(objectType, eCreate_Default);`
 
 ### TObjectId Constants (SCH)
-**Schematic objects**: `ePort` `eSchComponent` `ePin` `eRectangle` `eJunction` `eNetlabel` `eLine` `eWire` `eCrossSheetConnector` `eParameter` `eImplementation` `eSheetSymbol` `eSheetEntry`
+**Schematic objects**: `ePort` `eSchComponent` `ePin` `eRectangle` `eJunction` `eNetlabel` `eLine` `eWire` `eCrossSheetConnector` `eParameter` `eImplementation` `eSheetSymbol` `eSheetEntry` `eBus` `eBusEntry` `eSignalHarness` `eHarnessConnector`
 **Drawing primitives**: `eArc` `eEllipticalArc` `eRoundRectangle` `eImage` `ePie` `eEllipse` `ePolygon` `ePolyline` `eBezier`
 **Text/label objects**: `eLabel` `eTextFrame` `eDesignator` `eSheetFileName` `eSheetName` `ePowerObject`
 **Implementation**: `eImplementation` `eImplementationMap` `eImplementationsList` `eMapDefiner`
@@ -65,7 +68,7 @@ Children: `AddSchObject(child)` `RemoveSchObject(child)` `SchIterator_Create` `S
 Movement: `MoveByXY(dx, dy)`
 
 ### ISch_Pin
-`Location` (TLocation) `Orientation` (TRotationBy90) `Designator` (String) `Name` (String) `Color` (TColor) `OwnerPartId` (Integer) `OwnerPartDisplayMode` (Integer) `Selection` (Boolean) `ShowName` (Boolean) `IsHidden` (Boolean) `PinLength` (Integer) `Description` (String) `HiddenNetName` (String)
+`Location` (TLocation) `Orientation` (TRotationBy90) `Designator` (String) `Name` (String) `Color` (TColor) `OwnerPartId` (Integer) `OwnerPartDisplayMode` (Integer) `Selection` (Boolean) `ShowName` (Boolean) `IsHidden` (Boolean) `PinLength` (Integer, internal coords) `Description` (String) `HiddenNetName` (String) `PinPackageLength` (Integer, writable - physical pin length for footprint)
 Electrical: `Electrical` (TPinElectrical)
 IEEE Symbols: `Symbol_Inner` `Symbol_InnerEdge` `Symbol_Outer` `Symbol_OuterEdge` (all TIeeeSymbol)
 Location access: `GetState_Location` / `SetState_Location(loc)` (explicit get/set alternative)
@@ -73,8 +76,10 @@ Children: `AddSchObject(param)` - add parameter to pin
 
 ### ISch_Parameter
 `Name` (String) `Text` (String) `Location` (TLocation) `ShowName` (Boolean) `IsHidden` (Boolean) `Color` (TColor) `Orientation` (TRotationBy90) `ParamType` (eParameterType_String) `ReadOnlyState` (eReadOnly_None) `CalculatedValueString` (String, read-only computed value) `FontID` (TFontID)
+`Justification` (TTextJustification) `Autoposition` (Boolean, auto-position relative to parent)
 Location access: `GetState_Location` / `SetState_Location(loc)` (explicit get/set)
 Parent: `Container` - returns parent object
+Special values: `=CURRENTFOOTPRINT` (system expression that resolves to current footprint name)
 
 ### ISch_Rectangle
 `Location` (TLocation) `Corner` (TLocation) `Color` (TColor) `AreaColor` (TColor) `IsSolid` (Boolean) `LineWidth` (eSmall|eMedium|eLarge) `OwnerPartId` (Integer) `OwnerPartDisplayMode` (Integer)
@@ -84,12 +89,16 @@ Parent: `Container` - returns parent object
 
 ### ISch_NetLabel
 `Location` (TLocation) `Orientation` (TRotationBy90) `Text` (String)
+Methods: `MoveToXY(x, y)` `RotateBy90(center, count)` (rotate count*90 degrees around center TLocation) `SetState_xSizeySize` (recalculate bounding size)
 
 ### ISch_Line
 `Location` (TLocation) `Corner` (TLocation) `LineWidth` (eSmall|eMedium|eLarge) `LineStyle` (eLineStyleSolid) `Color` (TColor)
 
 ### ISch_Wire
-`Location` (TLocation) `SetState_LineWidth` `InsertVertex` `SetState_Vertex`
+`Location` (TLocation) `SetState_LineWidth := eSmall` (TSize) `InsertVertex := i` (add vertex at index) `SetState_Vertex(index, Point(x,y))` (set vertex position)
+
+### ISch_Label (standalone text, eLabel)
+`Text` (String) `FontId` (TFontID) `Color` (TColor) `Location` (TLocation) `Justification` (TTextJustification)
 
 ### ISch_CrossSheetConnector
 `Location` (TLocation) `CrossSheetStyle` (eCrossSheetRight) `Orientation` (TRotationBy90) `Text` (String)
@@ -145,6 +154,7 @@ End;
 ```
 Optional depth: `Iterator.SetState_IterationDepth(eIterateFirstLevel);` (standalone objects only, not children) or `eIterateAllLevels` (all nested objects).
 Filter all: `Iterator.SetState_FilterAll;` - removes all filters.
+Part filter: `Iterator.AddFilter_CurrentPartPrimitives;` - restrict to current part's primitives only.
 
 ### Spatial Iterator (area filter)
 ```
@@ -249,6 +259,9 @@ Obj.FontID := FontID; // apply font to any text object
 ### TIeeeSymbol
 `eNoSymbol` `eDot` `eRightLeftSignalFlow` `eClock` `eActiveLowInput` `eAnalogSignalIn` `eNotLogicConnection` `eShiftRight` `ePostPonedOutput` `eOpenCollector` `eHiz` `eHighCurrent` `ePulse` `eSchmitt` `eDelay` `eGroupLine` `eGroupBin` `eActiveLowOutput` `ePiSymbol` `eGreaterEqual` `eLessEqual` `eSigma` `eOpenCollectorPullUp` `eOpenEmitter` `eOpenEmitterPullUp` `eDigitalSignalIn` `eAnd` `eInvertor` `eOr` `eXor` `eShiftLeft` `eInputOutput` `eOpenCircuitOutput` `eLeftRightSignalFlow` `eBidirectionalSignalFlow`
 
+### TTextJustification
+`eJustify_BottomLeft` `eJustify_BottomCenter` `eJustify_BottomRight` `eJustify_CenterLeft` `eJustify_CenterCenter` `eJustify_CenterRight` `eJustify_TopLeft` `eJustify_TopCenter` `eJustify_TopRight`
+
 ### TFontStyles
 `fsBold` `fsItalic` `fsUnderline` `fsStrikeOut`. Check membership: `InSet(fsBold, Font.Style)`
 
@@ -272,6 +285,7 @@ End;
 ### IWorkSpace
 `DM_ProjectCount` `DM_Projects(i)` (IProject)
 `DM_FocusedDocument` (IDocument)
+`DM_MessagesManager` (IMessagesManager) `DM_ShowMessageView` - open Messages panel.
 
 ### IProject
 `DM_FocusedProject` (from GetWorkspace)
@@ -279,11 +293,14 @@ End;
 `DM_PhysicalDocumentCount` `DM_PhysicalDocuments(i)` (IDocument - for net info after compile)
 `DM_ProjectFileName` `DM_ProjectFullPath`
 `DM_Compile` - compile project (expands logical→physical docs)
+`DM_TopLevelLogicalDocument` (IDocument) - top-level doc in hierarchical design.
+`DM_DocumentFlattened` (IDocument) - flattened hierarchy doc (Nil if not compiled).
 
 ### IDocument
 `DM_DocumentKind` ('SCH'|'SCHLIB'|etc) `DM_FullPath` `DM_FileName` (name only)
 `DM_ComponentCount` `DM_Components(i)` (IComponent)
 `DM_NetCount` `DM_Nets(i)` (INet)
+`DM_ChildDocumentCount` `DM_ChildDocuments[i]` (IDocument, for hierarchical traversal)
 
 ### IComponent (WSM)
 `DM_PhysicalPath` `DM_UniqueId` `DM_UniqueIdName` `DM_UniqueIdPath` `DM_FullLogicalDesignator`
@@ -296,7 +313,10 @@ End;
 `DM_PinNumber` `DM_FlattenedNetName`
 
 ### INet (WSM)
-`DM_NetName`
+`DM_NetName` `DM_PinCount` (Integer) `DM_Pins(i)` (INetItem) `DM_IsLocal` (Boolean, unconnected/single-pin net)
+
+### INetItem (WSM - pins accessed via INet)
+`DM_PinNumber` (String) `DM_PinName` (String) `DM_NetName` (String) `DM_LogicalPartDesignator` (String, e.g. 'U1A') `DM_OwnerNetLogical` (INet)
 
 ## PROCESS-BASED OPERATIONS
 Pattern: `ResetParameters; Add*Parameter(...); RunProcess('Process:Name');`
@@ -365,7 +385,37 @@ ResetParameters; RunProcess('Sch:Clear'); // delete selected
 ```
 ResetParameters; AddStringParameter('Action', 'Document'); RunProcess('Sch:Zoom');
 // or: AddStringParameter('Action', 'All');
+// or: AddStringParameter('Action', 'Redraw');  // force screen redraw
 ```
+
+### Compile Project (Process)
+```
+ResetParameters; AddStringParameter('Action', 'Compile');
+AddStringParameter('ObjectKind', 'Project'); RunProcess('WorkspaceManager:Compile');
+```
+
+## MESSAGES PANEL
+```
+WSM := GetWorkSpace;
+MM := WSM.DM_MessagesManager;
+MM.ClearMessages;
+MM.BeginUpdate;
+MM.AddMessage('Category', 'Message text', 'Source', 'DocPath', '', '', IconIndex, False);
+MM.EndUpdate;
+WSM.DM_ShowMessageView;
+```
+Icon indices: `3` (OK) `4` (Error) `107` (Info).
+
+## CLIENT METHODS
+`Client.OpenDocument('SCH', fullPath)` - open document, returns IServerDocument.
+`Client.ShowDocument(doc)` - activate/focus document. `Client.ShowDocumentDontFocus(doc)` - show without stealing focus.
+`Client.StartServer('SCH')` - ensure schematic server is running.
+`IServerDocument.Modified := True` - mark document as dirty (prompts save on close).
+`Clipboard.AsText` (String r/w) - read/write system clipboard text.
+`FindParameterByName(SchDoc, 'ParamName')` - get ISch_Parameter from document by name.
+
+## STANDARD SHEET PARAMETERS (title block fields)
+`Title` `DocumentNumber` `Revision` `Date` `Time` `Author` `DrawnBy` `CheckedBy` `ApprovedBy` `Engineer` `CompanyName` `Organization` `Address1`..`Address4` `SheetNumber` `SheetTotal` `ModifiedDate`
 
 ## DIALOGS & UTILITY FUNCTIONS
 `ShowMessage(str)` `ShowInfo(str)` `ShowWarning(str)` `ShowError(str)` `ConfirmNoYes(str)` (returns Boolean)
@@ -373,6 +423,8 @@ ResetParameters; AddStringParameter('Action', 'Document'); RunProcess('Sch:Zoom'
 `StringsEqual(s1, s2)` - case-insensitive compare
 `DateToStr(Date)` `TimeToStr(Time)` - timestamps
 `SpecialFolder_MyDesigns` - special path constant
+`VarToStr(variant)` - convert variant to string. `InSet(element, set)` - test set membership.
+`TFontDialog.Execute` - show font picker dialog. Access `.Font.Name` `.Font.Size` `.Font.Color` `.Font.Style` after.
 
 ## FILE I/O
 ```
