@@ -19,7 +19,7 @@ If Client = Nil Then Exit;
 `Client.CloseDocument(doc)` - closes an open document.
 
 ### Document Operations
-`Client.OpenDocument('Sch', path)` `Client.OpenDocument('Text', path)` returns IServerDocument.
+`Client.OpenDocument('Sch', path)` `Client.OpenDocument('Text', path)` `Client.OpenDocument('OUTPUTJOB', path)` returns IServerDocument.
 `Client.OpenDocumentShowOrHide('Text', path, False)` - open without showing.
 `Client.ShowDocument(doc)` `Client.ShowDocumentDontFocus(doc)` - display document.
 `Client.SendMessage('WorkspaceManager:OpenObject','Kind=PcbProject | ObjectKind=NewAnything',1024,Nil)` - create blank project.
@@ -324,6 +324,20 @@ GetIntegerParameter('Result', value);  // 0=failed
 GetStringParameter('File1', fileName); // generated file path
 ```
 
+#### OutJob Batch Processing Pattern
+OutJob files (.OutJob) are INI-format. Parse with TIniFile to read output configurations, then run each via processes:
+```
+// Open OutJob document
+OutJobDoc := Client.OpenDocument('OUTPUTJOB', outJobPath);
+Client.ShowDocument(OutJobDoc);
+// Run all outputs in OutJob:
+ResetParameters;
+AddStringParameter('Action', 'Run');
+AddStringParameter('ObjectKind', 'OutputBatch');
+RunProcess('WorkspaceManager:GenerateReport');
+```
+Extended PDF parameters for OutJob outputs: `AddStringParameter('PDFACompliance', 'True')` `AddStringParameter('PDFVersion', '1.5')`.
+
 #### SimView:ImportWaveforms
 ```
 AddStringParameter('DocumentFilename', 'output.sdf');  // target SDF file
@@ -387,7 +401,7 @@ GetStringParameter('Path', s);             // selected file path
 `CreateNewDocumentFromDocumentKind('PCB')` - create new document by kind.
 
 ### String Functions
-`IntToStr(i)` `StrToInt(s)` `FloatToStr(f)` `BoolToStr(b)`
+`IntToStr(i)` `StrToInt(s)` `StrToIntDef(s, default)` `FloatToStr(f)` `StrToFloatDef(s, default)` `BoolToStr(b)`
 `UpperCase(s)` `LowerCase(s)` `Trim(s)` `Length(s)` `Copy(s,start,len)` `Delete(s,start,len)` `Pos(sub,s)` `Inc(i)`
 `ContainsText(fullStr, subStr)` `AnsiContainsText(fullStr, subStr)` - case-insensitive substring check (Boolean). `AnsiStartsStr(prefix, str)` `AnsiEndsStr(suffix, str)` - case-sensitive prefix/suffix check.
 `AnsiPos(sub, str)` - returns position (1-based, 0 if not found). Same as `Pos` but ANSI-aware.
@@ -452,11 +466,16 @@ CloseFile(F);
 `AddStrings(otherList)` - add all strings from another list.
 `SaveToFile(path)` `LoadFromFile(path)` `Filter` (for file dialogs)
 `IndexOf('text')` - returns index or -1 if not found.
+**CSV/Delimited parsing**: `Delimiter` (Char, delimiter character) `StrictDelimiter` (Boolean, True=only use Delimiter, False=also whitespace) `DelimitedText` (String, read/write - entire list as delimited string).
 **Name/Value Pairs**: `NameValueSeparator := '='` (default). `Names[I]` `Values[I]` `ValueFromIndex(I)` - access key/value parts. `IndexOfName('key')` - find by key name. Lines formatted as `key=value`.
 
 ### TList
 `Create` `Free` `Add(item)` `Items[I]` `Count`
 `CreateObject(className)` - alternative object creation (e.g. `CreateObject(TStringList)`).
+
+### TObjectList
+`Create` `Free` `Add(item)` `Items[I]` `Count` `IndexOf(obj)` (Integer, -1 if not found)
+`OwnsObjects` (Boolean) - when True, frees objects when removed or list is freed.
 
 ### TIniFile
 ```
@@ -511,13 +530,13 @@ End.
 **TCheckListBox**: `Items` (TStrings) `Items.Add(s)` `Items.Count` `Items[I]` `Checked[I]` (Boolean)
 **TCheckBox**: `Checked` (Boolean) `Caption` `Visible` `Enabled` `State` (cbChecked)
 **TRadioButton**: `Checked` (Boolean) `Enabled`
-**TComboBox**: `Text` `Items.Add(s)` `Items.Clear` `SetFocus`
+**TComboBox**: `Text` `Items.Add(s)` `Items.Clear` `SetFocus` `AddItem(name, obj)` (add item with associated object) `GetItemIndex` `SetItemIndex(index)` `ItemIndex` (Integer, selected index) `Items.Objects[I]` (associated object at index)
 **TListBox**: `Items.Insert(i,s)` `Clear` `ScrollWidth` `Canvas.TextWidth(s)`
 **TStringGrid**: `Cells[col,row]` `RowCount` `ColCount` `FixedRows` `FixedCols` `Col` `Row` `CellRect(col,row)` `DefaultRowHeight` `ColWidths[I]` `Rows(I)` (TStringList) `Selection` (TGridRect) `SetFocus`
 **TStatusBar**: `Panels.Items(I).Text` `SimpleText` `Update`
 **TImage**: image display control.
-**TOpenDialog**: `Execute` (Boolean) `FileName` `Filter` `Title`
-**TSaveDialog**: `Execute` (Boolean) `FileName` `Filter` `Title`
+**TOpenDialog**: `Execute` (Boolean) `FileName` `Filter` `Title` `InitialDir` `Options` (set: `ofNoValidate` `ofPathMustExist` `ofEnableSizing` `ofOverwritePrompt` `ofFileMustExist`)
+**TSaveDialog**: `Execute` (Boolean) `FileName` `Filter` `Title` `DefaultExt` `InitialDir` `FilterIndex` (Integer, 1-based active filter)
 **TFontDialog**: `Execute` (Boolean) `Font` (TFont)
 **TTimer**: `Interval` `OnTimer` `Enabled`
 **TShape**: `Create(Nil)` `Parent` `Left` `Top` `Width` `Height` `Visible` `Show`
@@ -535,12 +554,14 @@ Integer color values used in AddStringParameter and object properties. Common: 0
 ```
 PcbLib := PCBServer.GetCurrentPCBLibrary;
 If PcbLib = Nil Then Exit;
+// Create/load: PCBServer.CreatePCBLibrary  PCBServer.LoadPCBLibraryByPath(path)
 ```
 ### IPCB_Library
 `LibraryIterator_Create` (IPCB_LibraryIterator) `LibraryIterator_Destroy(iter)` - footprint iteration.
 `CurrentComponent` (IPCB_LibComponent, read/write) - gets/sets current footprint.
 `GetComponentByName(name)` (IPCB_LibComponent) - find footprint by name.
 `RegisterComponent(libComp)` - register new component in library.
+`ComponentCount` (Integer) - number of footprints in library.
 `Board` (IPCB_Board) - library board object. `Board.ViewManager_FullUpdate` - refresh view.
 `SetBoardToComponentByName(name)` - set board display to named component.
 `RefreshView` - refresh the library view.
@@ -556,6 +577,7 @@ If PcbLib = Nil Then Exit;
 `Height` - component height (read/write).
 `GroupIterator_Create` `GroupIterator_Destroy(iter)` - iterate child primitives.
 `RemovePCBObject(obj)` - remove a primitive from the footprint.
+`BeginModify` `EndModify` - bracket modifications to library component (undo support).
 
 ## SCH LIBRARY INTERFACES
 ```
@@ -634,6 +656,7 @@ PCBServer.SystemOptions.DoOnlineDRC  // Boolean, read/write - enable/disable onl
 - **Procedure params**: `Procedure Name(Value)` - untyped variant param. `Procedure Name(Var S : String)` - typed.
 - **Uses clause**: `Uses IniFiles;` at top of script for external units.
 - **Function results**: `Result := value;` to set return value.
+- **Forward declarations**: `Procedure Name(...); Forward;` - declare procedure signature before implementation (for mutual recursion or out-of-order definitions).
 - **BooleanToString helper**: `If Value = True Then Result := 'True' Else Result := 'False';` (not built-in).
 - **Try/Except**: `Try ... Except ShowMessage('Error: ' + E.Message); End;` - catch runtime errors. Use Try/Finally for cleanup, Try/Except for error handling.
 - **Hide from Run Script dialog**: Add a dummy parameter to prevent a procedure from appearing in the Run Script picker: `Procedure MyHiddenProc(Dummy : Integer);` - only parameterless procedures appear in the dialog.

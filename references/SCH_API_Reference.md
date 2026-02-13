@@ -16,7 +16,7 @@ Start server: `Client.StartServer('SCH');`
 Check doc type: `CurrentSch.ObjectID <> eSchLib` (eSchLib=library doc). Also: `Client.CurrentView.OwnerDocument.Kind` returns 'SCH'|'SCHLIB'.
 `CurrentSch.DocumentName` - filename. `CurrentSch.IsLibrary` - boolean check.
 `CurrentSch.OwnerDocument.DocumentName` - owner doc name.
-`CurrentSch.VisibleGridSize` (TCoord) - current visible grid size. `CurrentSch.GetState_SheetSizeY` (TCoord) - sheet height.
+`CurrentSch.VisibleGridSize` (TCoord) - current visible grid size. `CurrentSch.GetState_SheetSizeX` (TCoord) - sheet width. `CurrentSch.GetState_SheetSizeY` (TCoord) - sheet height. Also: `CurrentSch.SheetSizeX` `CurrentSch.SheetSizeY`.
 `CurrentSch.RegisterSchObjectInContainer(Obj)` - register object in doc container (alternative to AddSchObject + robot message).
 `cInternalPrecision` - constant divisor for converting internal coords to mils (e.g. `Location.X / cInternalPrecision`).
 
@@ -63,13 +63,16 @@ Alternative: `SchServer.SchObjectFactory(objectType, eCreate_Default);`
 `Designator` (ISch_Parameter - has .Name .Text) `Comment` (ISch_Parameter - has .Text) `LibReference` (String) `LibraryPath` (String) `Location` (TLocation) `Orientation` (TRotationBy90) `IsMirrored` (Boolean) `CurrentPartID` (Integer) `DisplayMode` (Integer) `AreaColor` (TColor) `PinColor` (TColor) `ShowHiddenFields` (Boolean) `UniqueId` (String) `ComponentDescription` (String) `Selection` (Boolean)
 Multi-part: `IsMultiPartComponent` `FullPartDesignator(PartID)` `GetState_CurrentPartID`
 Direct param access: `Comp.GetState_SchParameterByName('ParamName').Text` - get parameter value by name without iterating.
-Library ID: `LibIdentifierKind` `LibraryIdentifier` `DesignItemID`
+Library ID: `LibIdentifierKind` `LibraryIdentifier` `DesignItemID` (read/write)
 Children: `AddSchObject(child)` `RemoveSchObject(child)` `SchIterator_Create` `SchIterator_Destroy(iter)`
-Movement: `MoveByXY(dx, dy)`
+Movement: `MoveByXY(dx, dy)` `MoveToXY(x, y)` `Replicate` (clone component)
+Selection: `SetState_Selection(Boolean)` - programmatically select/deselect.
+Update transactions: `UpdatePart_PreProcess` / `UpdatePart_PostProcess` - bracket component update operations (e.g. changing DesignItemId).
 
 ### ISch_Pin
 `Location` (TLocation) `Orientation` (TRotationBy90) `Designator` (String) `Name` (String) `Color` (TColor) `OwnerPartId` (Integer) `OwnerPartDisplayMode` (Integer) `Selection` (Boolean) `ShowName` (Boolean) `IsHidden` (Boolean) `PinLength` (Integer, internal coords) `Description` (String) `HiddenNetName` (String) `PinPackageLength` (Integer, writable - physical pin length for footprint)
-Electrical: `Electrical` (TPinElectrical)
+Electrical: `Electrical` (TPinElectrical, also accessible as integer - e.g. `eCC_PinPower` constant)
+`PropagationDelay` (String) - pin propagation delay value.
 IEEE Symbols: `Symbol_Inner` `Symbol_InnerEdge` `Symbol_Outer` `Symbol_OuterEdge` (all TIeeeSymbol)
 Location access: `GetState_Location` / `SetState_Location(loc)` (explicit get/set alternative)
 Children: `AddSchObject(param)` - add parameter to pin
@@ -80,6 +83,11 @@ Children: `AddSchObject(param)` - add parameter to pin
 Location access: `GetState_Location` / `SetState_Location(loc)` (explicit get/set)
 Parent: `Container` - returns parent object
 Special values: `=CURRENTFOOTPRINT` (system expression that resolves to current footprint name)
+
+### ISch_Designator (eDesignator)
+`Text` (String) `Location` (TLocation) `Orientation` (TRotationBy90) `Justification` (TTextJustification) `FontID` (TFontID)
+Methods: `MoveToXY(x, y)` - move designator to absolute position.
+Accessed via `Component.Designator` (returns ISch_Parameter, but in library context may be ISch_Designator with extended methods).
 
 ### ISch_Rectangle
 `Location` (TLocation) `Corner` (TLocation) `Color` (TColor) `AreaColor` (TColor) `IsSolid` (Boolean) `LineWidth` (eSmall|eMedium|eLarge) `OwnerPartId` (Integer) `OwnerPartDisplayMode` (Integer)
@@ -316,7 +324,10 @@ End;
 `DM_NetName` `DM_PinCount` (Integer) `DM_Pins(i)` (INetItem) `DM_IsLocal` (Boolean, unconnected/single-pin net)
 
 ### INetItem (WSM - pins accessed via INet)
-`DM_PinNumber` (String) `DM_PinName` (String) `DM_NetName` (String) `DM_LogicalPartDesignator` (String, e.g. 'U1A') `DM_OwnerNetLogical` (INet)
+`DM_PinNumber` (String) `DM_PinName` (String) `DM_PinNameNoPartId` (String, pin name without part ID suffix) `DM_NetName` (String) `DM_LogicalPartDesignator` (String, e.g. 'U1A') `DM_OwnerNetLogical` (INet)
+
+### IChangeManager (WSM)
+`GetWorkspace.DM_ChangeManager` - access the change manager for ECO/change tracking operations.
 
 ## PROCESS-BASED OPERATIONS
 Pattern: `ResetParameters; Add*Parameter(...); RunProcess('Process:Name');`
@@ -386,6 +397,8 @@ ResetParameters; RunProcess('Sch:Clear'); // delete selected
 ResetParameters; AddStringParameter('Action', 'Document'); RunProcess('Sch:Zoom');
 // or: AddStringParameter('Action', 'All');
 // or: AddStringParameter('Action', 'Redraw');  // force screen redraw
+// or: AddStringParameter('Action', 'Selected');  // zoom to selected objects
+RunProcess('Sch:ZoomSelected');  // alternative: direct zoom-to-selected process
 ```
 
 ### Compile Project (Process)
@@ -420,7 +433,8 @@ Icon indices: `3` (OK) `4` (Error) `107` (Info).
 ## DIALOGS & UTILITY FUNCTIONS
 `ShowMessage(str)` `ShowInfo(str)` `ShowWarning(str)` `ShowError(str)` `ConfirmNoYes(str)` (returns Boolean)
 `BeginHourGlass` `EndHourGlass` - cursor control
-`StringsEqual(s1, s2)` - case-insensitive compare
+`StringsEqual(s1, s2)` - case-insensitive compare. `CompareText(s1, s2)` - case-insensitive compare (0 if equal).
+`StringToCoordUnit(str, coordVar, eImperial)` - parse string to coordinate with unit context.
 `DateToStr(Date)` `TimeToStr(Time)` - timestamps
 `SpecialFolder_MyDesigns` - special path constant
 `VarToStr(variant)` - convert variant to string. `InSet(element, set)` - test set membership.

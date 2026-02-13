@@ -18,7 +18,7 @@ Start server: `Client.StartServer('PCB');`
 `Board.PrimPrimDistance(obj1, obj2)` - returns TCoord distance between two primitives.
 `Board.SelectecObjectCount` `Board.SelectecObject[i]` - access selected objects (note: "Selectec" is correct API spelling).
 `Board.NewUndo()` - create undo entry (alternative to PreProcess/PostProcess for simple changes).
-`Board.MechanicalPairs.Count` `Board.MechanicalPairs.PairDefined(layer1, layer2)` `Board.MechanicalPairs.LayerUsed(layer)` - mech layer pair info.
+`Board.MechanicalPairs.Count` `Board.MechanicalPairs.PairDefined(layer1, layer2)` `Board.MechanicalPairs.LayerUsed(layer)` `Board.MechanicalPairs.RemovePair(layer1, layer2)` - mech layer pair info.
 `Board.LayerName(layer)` - get layer name string from TLayer.
 `Board.BoardOutline.PointInPolygon(x, y)` - Boolean point-in-polygon test.
 `Board.FindDominantRuleForObject(obj, eRule_*)` - get dominant rule for object. `Board.FindDominantRuleForObjectPair(obj1, obj2, eRule_*)` - for a pair.
@@ -55,12 +55,15 @@ End;
 `Obj := PCBServer.PCBObjectFactory(objectType, eNoDimension, eCreate_Default);`
 
 ### TObjectId Constants
-`eNoObject` `eArcObject` `ePadObject` `eViaObject` `eTrackObject` `eTextObject` `eFillObject` `eConnectionObject` `eNetObject` `eComponentObject` `ePolyObject` `eDimensionObject` `eCoordinateObject` `eClassObject` `eRuleObject` `eFromToObject` `eViolationObject` `eEmbeddedObject` `eTraceObject` `eSpareViaObject` `eBoardObject` `eBoardOutlineObject` `eRegionObject` `eComponentBodyObject` `eSplitPlaneObject` `eRoomObject`
+`eNoObject` `eArcObject` `ePadObject` `eViaObject` `eTrackObject` `eTextObject` `eFillObject` `eConnectionObject` `eNetObject` `eComponentObject` `ePolyObject` `eDimensionObject` `eCoordinateObject` `eClassObject` `eRuleObject` `eFromToObject` `eViolationObject` `eEmbeddedObject` `eTraceObject` `eSpareViaObject` `eBoardObject` `eBoardOutlineObject` `eRegionObject` `eComponentBodyObject` `eSplitPlaneObject` `eRoomObject` `eDifferentialPairObject`
 
 ## OBJECT PROPERTIES
 
 ### IPCB_Track
 `X1` `Y1` `X2` `Y2` `Width` `Layer` (all TCoord except Layer=TLayer)
+`GetState_Length` (TCoord, computed track length) `SetState_Length(value)` (sets track length)
+Methods: `MoveToXY(x, y)` `RotateBy(angle)` `Replicate` (clone track object)
+Net: `Track.Net.InDifferentialPair` (Boolean, whether track's net is part of a differential pair)
 
 ### IPCB_Arc
 `XCenter` `YCenter` `Radius` `LineWidth` `StartAngle` `EndAngle` `Layer`
@@ -112,7 +115,9 @@ TrueType: `UseTTFonts` `Bold` `Italic` `FontName`
 Inverted: `Inverted` `InvertedTTTextBorder` `UseInvertedRectangle` `InvRectHeight` `InvRectWidth` `TTFOffsetFromInvertedRect`
 Barcode: `TextKind` (`eText_BarCode`) `BarCodeFullHeight` `BarCodeXMargin` `BarCodeYMargin` `BarCodeRenderMode` (`eRender_ByMinWidth`) `BarCodeMinWidth` `BarCodeFullWidth`
 Designator: `GetDesignatorDisplayString` (resolved display string) `GetState_Mirror` (Boolean, mirrored state)
-Methods: `RotateBy(angle)` (rotate text by delta angle)
+Multiline: `SetState_Multiline(True)` (enable multiline text) `MultilineTextAutoPosition` (auto-position mode)
+Bounds: `X1Location` `Y1Location` `X2Location` `Y2Location` (bounding rectangle coordinates)
+Methods: `RotateBy(angle)` (rotate text by delta angle) `RotateAroundXY(cx, cy, angle)` (rotate around arbitrary center point)
 
 ### IPCB_Component (inherits IPCB_Group)
 `X` `Y` `Layer` `Rotation` (TAngle, degrees) `Height` `SourceDesignator` `Pattern` (footprint name) `UniqueId`
@@ -150,6 +155,8 @@ Segments: `PointCount` `Segments[i].vx` `.vy` `.Kind` (.cx .cy .Angle1 .Angle2 .
 `Name` `ShowNetConnects` `HideNetConnects` (show/hide ratsnest for this net)
 `ConnectivelyInValidate` (force net connectivity recalculation)
 `Net.AddPCBObject(Prim)` - add primitive to net. `Net.RemovePCBObject(Prim)` - remove from net.
+`Net.Color` (TColor) `Net.OverrideColorForDraw` (Boolean) - net color and override display.
+`Net.InDifferentialPair` (Boolean) - whether net belongs to a differential pair.
 Iterate members: `Net.GroupIterator_Create` (see Group Iterator section)
 
 ### IPCB_Embedded
@@ -165,6 +172,10 @@ Iterate members: `Net.GroupIterator_Create` (see Group Iterator section)
 
 ### IPCB_FromTo
 `FromPad` `ToPad` `NetName` (all strings)
+
+### IPCB_DifferentialPair
+`Name` (String) `PositiveNet` (IPCB_Net) `NegativeNet` (IPCB_Net)
+TObjectId = `eDifferentialPairObject`. Used with `PCBServer.PCBClassFactoryByClassMember(eClassMemberKind_DifferentialPair)`.
 
 ### IPCB_SplitPlane
 `Layer` `Net` (internal plane split region). TObjectId = `eSplitPlaneObject`.
@@ -333,6 +344,7 @@ Common props: `Rule.Name` `Rule.Comment` `Rule.UniqueId` `Rule.RuleKind` `Rule.N
 ### Rule Common Properties
 `Rule.Name` `Rule.Comment` `Rule.UniqueId` `Rule.Enabled` `Rule.DRCEnabled` (Boolean)
 `Rule.Scope1Expression` `Rule.Scope2Expression` (query expression strings)
+`Rule.Scope1Includes(obj)` (Boolean) - test if an object matches Rule's Scope1 expression.
 `Rule.ActualCheck(obj1, obj2)` - returns IPCB_Violation if rule violated, Nil if OK (obj2 can be Nil for unary rules).
 
 ### Width Constraint (IPCB_MaxMinWidthConstraint)
@@ -359,6 +371,9 @@ Common props: `Rule.Name` `Rule.Comment` `Rule.UniqueId` `Rule.RuleKind` `Rule.N
 ### Short Circuit (IPCB_ShortCircuitConstraint)
 `Allowed` (Boolean, whether short circuit is allowed)
 
+### Differential Pairs Routing (IPCB_DifferentialPairsRoutingRule)
+`PreferedGap(Layer)` (TCoord, preferred gap between diff pair traces on given layer)
+
 ### Confinement / Room (IPCB_ConfinementConstraint)
 `BoundingRect` (TCoordRect) `ConstraintLayer` `Kind` (TConfinementStyle: `eConfineOut`)
 `PointCount` `Segments[i]` (TPolySegment - vx, vy, Kind, cx, cy, Radius, Angle1, Angle2)
@@ -372,11 +387,14 @@ Create: `NetClass := PCBServer.PCBClassFactoryByClassMember(eClassMemberKind_Net
 Props: `NetClass.SuperClass := False;` `NetClass.Name := 'name';` `NetClass.AddMemberByName('GND');`
 `Board.AddPCBObject(NetClass);`
 Iterate members: `NetClass.MemberName[i]` (returns '' when done) `NetClass.MemberKind` `NetClass.IsMember(name)`
-**TClassMemberKind**: `eClassMemberKind_Net` (0) `eClassMemberKind_Component` (1) `eClassMemberKind_FromTo` (2) `eClassMemberKind_Pad` (3) `eClassMemberKind_Layer` (4)
+**TClassMemberKind**: `eClassMemberKind_Net` (0) `eClassMemberKind_Component` (1) `eClassMemberKind_FromTo` (2) `eClassMemberKind_Pad` (3) `eClassMemberKind_Layer` (4) `eClassMemberKind_DifferentialPair` (5)
 
 ## PCB LIBRARY OPERATIONS
 ```
 CurrentLib := PCBServer.GetCurrentPCBLibrary;
+// Create/load libraries:
+// PCBServer.CreatePCBLibrary - create new empty PCB library
+// PCBServer.LoadPCBLibraryByPath(path) - load existing PCB library by file path
 NewComp := PCBServer.CreatePCBLibComp;
 NewComp.Name := 'Footprint';
 CurrentLib.RegisterComponent(NewComp);
@@ -613,6 +631,15 @@ ResetParameters; AddStringParameter('Action','TO_POLYGON'); RunProcess('PCB:Conv
 ResetParameters; AddStringParameter('Index','0');
 AddStringParameter('Expression','IsTrack And OnTopLayer');
 RunProcess('PCB:RunQuery');
+
+// Select objects by area/kind/layer
+ResetParameters; AddStringParameter('Scope','InsideArea');
+AddStringParameter('ObjectKind','Component'); RunProcess('PCB:Select');
+// or: AddStringParameter('Scope','Layer'); RunProcess('PCB:Select');
+
+// Select next topology object (e.g. diff pair partner)
+ResetParameters; AddStringParameter('SelectTopologyObjects','TRUE');
+RunProcess('PCB:SelectNext');
 ```
 
 ### Query Expressions (for PCB:RunQuery, rule scopes, filter panels)
