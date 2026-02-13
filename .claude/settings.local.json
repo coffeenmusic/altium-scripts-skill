@@ -4,7 +4,8 @@
       "Bash(test:*)",
       "Bash(powershell -Command:*)",
       "Bash(find:*)",
-      "Read(//c/Users/stephen.thompson/Documents/Claude Code/Altium_Scripting_Documentation/**)"
+      "Read(//c/Users/stephen.thompson/Documents/Claude Code/Altium_Scripting_Documentation/**)",
+      "Bash(Select-Object -ExpandProperty Name)"
     ]
   }
 }

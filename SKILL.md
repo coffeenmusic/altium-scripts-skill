@@ -3,38 +3,185 @@ name: altium-delphi-scripts
 description: Expert guidance for writing Altium Designer DelphiScript automation scripts. Use when users ask to create, write, develop, or build scripts for Altium Designer PCB/schematic automation, footprint creation, design rule manipulation, layer management, component placement, net routing, output generation, or any other Altium scripting task. Also use for questions about Altium API usage, script syntax, or how to accomplish specific automation tasks in Altium Designer.
 ---
 
-# Altium DelphiScript API Skill
+# Altium DelphiScript Scripting Skill
 
 ## Overview
 
-This skill provides complete API reference documentation for writing Altium Designer DelphiScript automation scripts. Three compact reference files contain interface definitions, object properties, method signatures, enumerations, and patterns needed to write any Altium script. A separate class structures file provides complete member listings for interfaces when the API references don't have enough detail.
+This skill combines two approaches for writing Altium Designer DelphiScript automation scripts:
 
-## API Reference Files
+1. **Working Example Scripts** (primary) - A curated collection of 230+ working example scripts. Use these as the foundation for any new script by finding relevant examples, reading their source code, and adapting their patterns.
+2. **API Reference Documentation** (supplementary) - Three compact reference files containing interface definitions, object properties, method signatures, enumerations, and patterns. Use these to fill in gaps when example scripts don't cover a specific interface, property, or pattern.
 
-Read the relevant reference file(s) based on the user's request:
-
-### `references/PCB_API_Reference.md`
-PCB/Layout editor API. Covers: PCBServer, board access, coordinate units, undo system, object factory, all PCB object properties (tracks, arcs, vias, pads, text, fills, regions, polygons, components, rules, nets, classes, dimensions, coordinates, embedded objects, board outline), all iterator types (board, spatial, group, library), layer constants, layer stack, interactive mode, pad cache, report generation.
-
-### `references/SCH_API_Reference.md`
-Schematic editor API. Covers: SchServer, document access, coordinate units, undo system, object factory, all SCH object properties (ports, components, pins, wires, netlabels, junctions, lines, sheet symbols, sheet entries, cross-sheet connectors, parameters, implementations, power objects, drawing primitives), all iterator types (document, spatial, library, parent-child), font manager, library operations, WSM interfaces for schematic data.
-
-### `references/General_DXP_API_Reference.md`
-Everything else. Covers: DXP Client framework (IClient, IServerRecord, IServerProcess, IServerDocument, IServerModule), Workspace Manager interfaces (IWorkSpace, IProject, IDocument, IComponent, INet, IPin, IPart), Messages Manager, Integrated Library Manager, Model Type Manager, FPGA Configuration, complete process system catalog (PCB color/layer, SCH operations, PDF publishing, netlist generation, waveform import, common dialogs), general DelphiScript utilities (file I/O, TIniFile, TXceedZip, FindFiles, RunApplication), VCL form structure, VCL components, DelphiScript language notes.
-
-### `references/classes/Altium_Class_Structures.md`
-Complete interface member listings from Altium Script IDE. Use when you need the full property/method list for a specific interface that isn't fully covered in the API references above. Base class members are documented once (e.g., `IPCB_Primitive`); derived classes list only their unique additions. Currently covers: IPCB_Primitive, IPCB_Board, IPCB_DifferentialPair, IPCB_Rule, IPCB_DifferentialPairsRoutingRule.
+Always start with example scripts to understand correct patterns, then consult the API references for additional details or less common interfaces.
 
 ## Workflow
 
-1. **Determine scope**: Is the task PCB, schematic, or general/cross-domain?
-2. **Read the relevant API reference(s)**: Usually 1-2 files cover the need. For cross-domain tasks (e.g., iterating SCH components then modifying PCB), read both.
-3. **If you need a specific property/method not in the API references**: Check `references/classes/Altium_Class_Structures.md` for complete member listings. Remember that derived classes inherit from their base — check both the class and its parent.
-4. **Write the script**: Combine the documented patterns, interfaces, and properties to build the solution.
+### Step 1: Understand the User's Request
+
+Clarify what the user wants to accomplish:
+- What type of document (PCB, schematic, library)?
+- What objects need to be created, modified, or analyzed?
+- What is the desired output or end result?
+
+### Step 2: Find Relevant Example Scripts
+
+Read `references/overview.md` which contains one-sentence summaries of all available scripts organized by category (PCB, Schematic, Process).
+
+Identify 2-5 scripts that are most relevant to the user's request based on their functionality.
+
+**Search patterns to help locate relevant scripts:**
+- For object creation: Look for "Create", "Place", or object type names
+- For iteration/analysis: Look for "Iterate", "Query", "Report", "Count"
+- For modification: Look for "Modify", "Edit", "Update", "Change"
+- For validation: Look for "Check", "Validate", "Violations"
+- For layer operations: Look for "Layer", "Stack"
+- For rules: Look for "Rule", "Constraint"
+- For manufacturing: Look for "Output", "Export", "Generator"
+
+### Step 3: Get Detailed Information
+
+If the one-sentence summaries aren't sufficient, read the corresponding section(s) in `references/summaries.md` which provides detailed paragraph-length descriptions of script functionality, key procedures, and use cases.
+
+### Step 4: Examine Example Code
+
+Once you've identified the most relevant example scripts, read their actual source code from `references/scripts/[category]/[script-name]`. The scripts are organized into directories:
+- `references/scripts/PCB/` - PCB document scripts (60+ scripts)
+- `references/scripts/SCH/` - Schematic document scripts (30+ scripts)
+- `references/scripts/Processes/` - Process automation scripts (15 scripts)
+
+### Step 5: Consult API References for Gaps
+
+After reading example scripts, if you need more detail about specific interfaces, properties, methods, or enumerations that aren't fully demonstrated in the examples, read the relevant API reference file(s):
+
+#### `references/PCB_API_Reference.md`
+PCB/Layout editor API. Covers: PCBServer, board access, coordinate units, undo system, object factory, all PCB object properties (tracks, arcs, vias, pads, text, fills, regions, polygons, components, rules, nets, classes, dimensions, coordinates, embedded objects, board outline, differential pairs, contour/geometric utilities), all iterator types (board, spatial, group, library), layer constants, layer stack, interactive mode, pad cache, report generation.
+
+#### `references/SCH_API_Reference.md`
+Schematic editor API. Covers: SchServer, document access, coordinate units, undo system, object factory, all SCH object properties (ports, components, pins, wires, netlabels, junctions, lines, sheet symbols, sheet entries, cross-sheet connectors, parameters, implementations, power objects, drawing primitives), all iterator types (document, spatial, library, parent-child), font manager, library operations, WSM interfaces for schematic data.
+
+#### `references/General_DXP_API_Reference.md`
+Everything else. Covers: DXP Client framework (IClient, IServerRecord, IServerProcess, IServerDocument, IServerModule), Workspace Manager interfaces (IWorkSpace, IProject, IDocument, IComponent, INet, IPin, IPart), Messages Manager, Integrated Library Manager, Model Type Manager, FPGA Configuration, complete process system catalog (PCB color/layer, SCH operations, PDF publishing, netlist generation, waveform import, common dialogs), general DelphiScript utilities (file I/O, TIniFile, TXceedZip, FindFiles, RunApplication), VCL form structure, VCL components (TForm, TButton, TEdit, TComboBox, TCheckListBox, TProgressBar, TObjectList, etc.), DelphiScript language notes.
+
+#### `references/classes/Altium_Class_Structures.md`
+Complete interface member listings from Altium Script IDE. Use when you need the full property/method list for a specific interface that isn't fully covered in the API references or example scripts. Base class members are documented once (e.g., `IPCB_Primitive`); derived classes list only their unique additions.
+
+### Step 6: Write the New Script
+
+Using the example code as the primary foundation:
+
+1. **Copy relevant patterns**: Use similar initialization, iteration, and object manipulation patterns from the examples
+2. **Adapt interfaces**: Identify which API interfaces are needed (IPCB_Board, ISch_Document, etc.)
+3. **Fill in gaps from API references**: For properties or methods not demonstrated in examples, use the API reference documentation
+4. **Follow conventions**: Use proper server preprocessing/postprocessing, undo system integration, error handling
+5. **Combine techniques**: Often the best solution combines patterns from 2-3 different example scripts
+
+## Script Directory Tree
+
+```
+references/scripts/
+|-- [DIR] PCB/
+|   |-- Count_Connection_Lines.pas
+|   |-- CreateAVia.pas
+|   |-- CreateComponentOnPCB.pas
+|   |-- CreateFootprintInLibrary.pas
+|   |-- CreatePCBObjects.PAS
+|   |-- CreateRules.pas
+|   |-- Cycle_Pcb_Cursor_Type.pas
+|   |-- DeletePCBObjects.pas
+|   |-- EmbeddedObjects.pas
+|   |-- NetObjectAssign.pas
+|   |-- PadStackInfo.pas
+|   |-- PadViaCacheProperties.PAS
+|   |-- QueryBoard.pas
+|   |-- Undo.pas
+|   |-- [DIR] BoardOutline Copier/
+|   |-- [DIR] CreateRegionsFromBitmap/
+|   |-- [DIR] FootPrint Finder/
+|   |-- [DIR] FromTos Generator/
+|   |-- [DIR] Hole Size Editor/
+|   |-- [DIR] Mill Exporter/
+|   |-- [DIR] PCB Class Generator/
+|   |-- [DIR] PCB Iterators/
+|   |   |-- Count_Pads.pas, CountTracksInComponent.pas
+|   |   |-- IterateComponentBodies.pas, IterateNets.PAS
+|   |   |-- IteratePolygons.pas, IterateRegions.pas
+|   |   |-- LibraryIterator.pas, SpatialIterator.Pas
+|   |-- [DIR] PCB Layers/
+|   |   |-- Layers_Info.pas, QueryLayerPairs.pas
+|   |   |-- QueryLayersOfMechType.PAS, QueryLayerStack.pas
+|   |   |-- QueryMechLayers.pas, QueryUsedLayers.pas
+|   |   |-- RebuildInternalAndSplitPlanes.pas
+|   |   |-- Toggle_Connect_layer_display.pas
+|   |   |-- ValidateLayerStack.pas
+|   |-- [DIR] PCB Logo Creator/
+|   |-- [DIR] PCB Objects Mover/
+|   |-- [DIR] PCB Outputs/
+|   |   |-- GetObjectClasses.pas, PCBOutputGenerator.pas
+|   |   |-- Violations.pas
+|   |-- [DIR] PCB Rules/
+|   |   |-- IterateRules.pas, ModifyWidthRules.pas
+|   |-- [DIR] PCBLIB Outputs/
+|   |-- [DIR] SwapOrRotateComponents/
+|   |-- [DIR] Unique Object Checker/
+|   |-- [DIR] UnRoute Net Class/
+|   +-- [DIR] Values Checker/
+|-- [DIR] Processes/
+|   |-- CirWiz.pas, Clrins1.pas, Clrins2.pas
+|   |-- ImportWaveforms.pas, pcbcolor.pas, pcblayer.pas
+|   |-- PlacePCBPolygon.pas, PlaceSchPort.pas
+|   |-- PublishToPDFScript.pas, Quikcopy.pas
+|   |-- RunCommonDialog.pas, ShowNetList.pas
+|   +-- SimpleExample.pas
++-- [DIR] SCH/
+    |-- AddModelToComponentScript.pas
+    |-- checkpins.pas, CompLibReader.pas
+    |-- CountPorts.pas, createcomp_in_lib.pas
+    |-- createcomponent_on_sch.pas
+    |-- CreateSchObjects.pas, DeleteSchObjects.pas
+    |-- FetchParameters.pas, FetchParamsOfComp.pas
+    |-- FetchPinsOfComps.pas, IterateSchSheets.pas
+    |-- libiterator.pas, modelsofacomponent.pas
+    |-- ModifySchObjects.pas, MoveParameters.pas
+    |-- ParametersOfSymbolsInALibrary.pas
+    |-- parentchild_iterators.pas
+    |-- PlaceAPort.pas, PlaceSchObjects.PAS
+    |-- ReplaceSchObjects.pas, SchDocsRenamer.pas
+    |-- SimModelsOfComponents.pas
+    |-- SymbolPrimsIterator.pas, UndoRedo.pas
+    |-- usingAspatialiterator.pas
+    |-- UsingSchInterfaces.pas
+    |-- usingWSMInterfaces.pas
+    |-- [DIR] Circad Translator/
+    |-- [DIR] CompReplace/
+    |-- [DIR] Connectivity/
+    |-- [DIR] Font Editor/
+    |-- [DIR] Import Pins/
+    |-- [DIR] UpdateFootprintLocations/
+    +-- [DIR] UserDefinedParameters/
+```
+
+## Finding Specific Functionality
+
+If you're looking for scripts that demonstrate:
+
+**PCB Object Creation**: See CreatePCBObjects.PAS, CreateAVia.pas, CreateComponentOnPCB.pas
+**Design Rules**: See CreateRules.pas, ModifyWidthRules.pas, IterateRules.pas
+**Layers**: See Layers_Info.pas, QueryLayerStack.pas, ValidateLayerStack.pas
+**Iteration**: See Count_Pads.pas, IterateNets.PAS, IterateRegions.pas, LibraryIterator.pas
+**Component Manipulation**: See CreateComponentOnPCB.pas, SwapComponentsUnit.pas
+**Footprint Creation**: See CreateFootprintInLibrary.pas
+**Output Generation**: See PCBOutputGenerator.pas, Mill Exporter
+**Validation**: See Violations.pas, UniqueObjectChecker, ValuesChecker
+**Net Operations**: See NetObjectAssign.pas, UnRoute Net Class
+**Region/Polygon**: See IterateRegions.pas, IteratePolygons.pas, PCB Picture Creator
+**Schematic Components**: See CreateSchObjects.pas, PlaceSchObjects.PAS, UsingSchInterfaces.pas
+**Schematic Library**: See createcomp_in_lib.pas, libiterator.pas, SymbolPrimsIterator.pas
+**Schematic Parameters**: See FetchParameters.pas, FetchParamsOfComp.pas, UserDefinedParameters
+**Process Automation**: See SimpleExample.pas, pcbcolor.pas, PublishToPDFScript.pas
 
 ## Complete Script Templates
 
-The API references document individual patterns and interfaces. Below are complete end-to-end script templates showing how to assemble them into working scripts.
+The example scripts demonstrate individual patterns. Below are complete end-to-end templates showing how to assemble patterns into working scripts. Use these as starting points when no single example script matches the user's needs.
 
 ### PCB Script Template
 ```delphi
@@ -212,3 +359,15 @@ End.
 - SCH coords: Use `MilsToCoord()`, `Point(x,y)` for TLocation
 - DelphiScript uses `MkSet()` instead of standard Delphi `[set]` syntax
 - All variables are effectively variants - explicit typing is optional but recommended
+
+## Resources Summary
+
+| Resource | Purpose | When to Use |
+|---|---|---|
+| `references/overview.md` | One-sentence script summaries | First - find relevant examples |
+| `references/summaries.md` | Detailed script descriptions | When overview isn't enough detail |
+| `references/scripts/[category]/` | Actual working source code | Read code of relevant examples |
+| `references/PCB_API_Reference.md` | PCB interface/property details | Supplement examples with API detail |
+| `references/SCH_API_Reference.md` | SCH interface/property details | Supplement examples with API detail |
+| `references/General_DXP_API_Reference.md` | DXP/WSM/VCL/utility details | Framework, processes, VCL, utilities |
+| `references/classes/Altium_Class_Structures.md` | Complete interface member lists | When API refs lack specific members |
