@@ -359,6 +359,7 @@ End.
 - SCH coords: Use `MilsToCoord()`, `Point(x,y)` for TLocation
 - DelphiScript uses `MkSet()` instead of standard Delphi `[set]` syntax
 - All variables are effectively variants - explicit typing is optional but recommended
+- **Hiding internal procedures from the script runner**: Altium's File > Run Script dialog only shows procedures with **no parameters**. Any helper or internal procedure that shouldn't be exposed to the user must accept a dummy parameter (e.g., `Dummy : Integer`) to hide it. Only the main entry points the user should see (e.g., `RunGUI`, `Run`) should be parameterless.
 
 ## Resources Summary
 
