@@ -13,6 +13,7 @@ If Client = Nil Then Exit;
 `Client.GetServerRecordCount` `Client.GetServerRecord(I)` (IServerRecord) `Client.GetServerRecordByName('CLIENT')` (IServerRecord)
 `Client.StartServer('SCH')` `Client.StartServer('PCB')` - start editor servers.
 `Client.GetProductVersion` (String) - returns version string (e.g. "19.0.13").
+`GetBuildNumberPart(versionStr, index)` (Integer) - extract part of version string (0=major, 1=minor, 2=build).
 `Client.IsDocumentOpen(path)` (Boolean) - check if a document is already open.
 `Client.GetDocumentByPath(path)` (IServerDocument) - get already-open document by path.
 `Client.GetDocumentKindFromDocumentPath(path)` (String) - infer document kind from file path.
@@ -388,6 +389,7 @@ GetStringParameter('Path', s);             // selected file path
 `GetErrorMessage(errorCode)` - human-readable error string.
 `BeginHourGlass` `EndHourGlass` - hourglass cursor.
 `ConfirmNoYes(str)` - yes/no dialog, returns Boolean.
+`ConfirmOKCancelWithCaption(caption, msg)` - OK/Cancel dialog with custom caption, returns Boolean.
 `FindFiles(path, pattern, attributes, recursive, stringList)` - built-in file search. Uses `faAnyFile` attribute.
 `FileExists(path)` - check if file exists. `DirectoryExists(path)` - check if directory exists.
 `CopyFile(src, dst, failIfExists)` - copy a file. `DeleteFile(path)` - delete a file.
@@ -401,7 +403,8 @@ GetStringParameter('Path', s);             // selected file path
 `CreateNewDocumentFromDocumentKind('PCB')` - create new document by kind.
 
 ### String Functions
-`IntToStr(i)` `StrToInt(s)` `StrToIntDef(s, default)` `FloatToStr(f)` `StrToFloatDef(s, default)` `BoolToStr(b)`
+`IntToStr(i)` `StrToInt(s)` `StrToIntDef(s, default)` `FloatToStr(f)` `StrToFloatDef(s, default)` `BoolToStr(b)` `BoolToStr(b, True)` (with True: returns 'True'/'False' strings)
+`Format(fmt, [args])` - format string with positional args (e.g. `Format('%s: %d', [name, count])`). Supports `%s` `%d` `%f` `%x` `%e`.
 `UpperCase(s)` `LowerCase(s)` `Trim(s)` `Length(s)` `Copy(s,start,len)` `Delete(s,start,len)` `Pos(sub,s)` `Inc(i)`
 `ContainsText(fullStr, subStr)` `AnsiContainsText(fullStr, subStr)` - case-insensitive substring check (Boolean). `AnsiStartsStr(prefix, str)` `AnsiEndsStr(suffix, str)` - case-sensitive prefix/suffix check.
 `AnsiPos(sub, str)` - returns position (1-based, 0 if not found). Same as `Pos` but ANSI-aware.
@@ -440,6 +443,8 @@ GetStringParameter('Path', s);             // selected file path
 
 ### Screen/Cursor
 `Screen.Cursor := crHourGlass` - set hourglass cursor. Alternative to `BeginHourGlass`/`EndHourGlass`.
+`Application.ProcessMessages` - process pending Windows messages (keeps UI responsive during long operations).
+`sLineBreak` - system line break constant (platform-aware newline).
 
 ### Debug
 `WriteToDebugFile(text)` - write to debug output file.
@@ -474,7 +479,7 @@ CloseFile(F);
 `CreateObject(className)` - alternative object creation (e.g. `CreateObject(TStringList)`).
 
 ### TObjectList
-`Create` `Free` `Add(item)` `Items[I]` `Count` `IndexOf(obj)` (Integer, -1 if not found)
+`Create` `Free` `Add(item)` `Items[I]` `Count` `Delete(i)` `IndexOf(obj)` (Integer, -1 if not found)
 `OwnsObjects` (Boolean) - when True, frees objects when removed or list is freed.
 
 ### TIniFile
@@ -527,7 +532,7 @@ End.
 **TEdit**: `Text` `OnChange`
 **TLabel**: `Caption`
 **TRadioGroup**: `ItemIndex` (0-based)
-**TCheckListBox**: `Items` (TStrings) `Items.Add(s)` `Items.Count` `Items[I]` `Checked[I]` (Boolean)
+**TCheckListBox**: `Items` (TStrings) `Items.Add(s)` `Items.AddObject(s, obj)` `Items.Count` `Items[I]` `Checked[I]` (Boolean)
 **TCheckBox**: `Checked` (Boolean) `Caption` `Visible` `Enabled` `State` (cbChecked)
 **TRadioButton**: `Checked` (Boolean) `Enabled`
 **TComboBox**: `Text` `Items.Add(s)` `Items.Clear` `SetFocus` `AddItem(name, obj)` (add item with associated object) `GetItemIndex` `SetItemIndex(index)` `ItemIndex` (Integer, selected index) `Items.Objects[I]` (associated object at index)
@@ -542,6 +547,7 @@ End.
 **TShape**: `Create(Nil)` `Parent` `Left` `Top` `Width` `Height` `Visible` `Show`
   `Shape` (stCircle|stRectangle|stRoundRect|stEllipse|stSquare|stRoundSquare)
   `Brush.Color` `Brush.Style` (bsSolid|bsClear) `Pen.Color` `Pen.Mode` (pmCopy) `Pen.Style` (psSolid) `Pen.Width`
+**TProgressBar**: `Position` (Integer) `Max` (Integer) `Update` - progress bar control.
 **TBevel**: decorative frame.
 **TMemo**: `Text` `Lines` (TStrings) `Lines.Clear` `Lines.Add(s)`
 **Self**: reference to owning form. `Self.Width` `Self.Invalidate` `Self.Close` `Self.Update` `Self.SetFocus`

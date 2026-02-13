@@ -117,6 +117,8 @@ Barcode: `TextKind` (`eText_BarCode`) `BarCodeFullHeight` `BarCodeXMargin` `BarC
 Designator: `GetDesignatorDisplayString` (resolved display string) `GetState_Mirror` (Boolean, mirrored state)
 Multiline: `SetState_Multiline(True)` (enable multiline text) `MultilineTextAutoPosition` (auto-position mode)
 Bounds: `X1Location` `Y1Location` `X2Location` `Y2Location` (bounding rectangle coordinates)
+State: `IsDesignator` (Boolean, text is a component designator) `IsHidden` (Boolean) `Descriptor` (String)
+AD19+: `AdvanceSnapping` (Boolean, enable text justification with snapping) `TTFInvertedTextJustify` (TTextAutoposition, text justification anchor point for TTF text)
 Methods: `RotateBy(angle)` (rotate text by delta angle) `RotateAroundXY(cx, cy, angle)` (rotate around arbitrary center point)
 
 ### IPCB_Component (inherits IPCB_Group)
@@ -138,7 +140,22 @@ Parent checks: `InPolygon` `InComponent` `InNet` `.Polygon` `.Component` `.Net` 
 
 ### IPCB_Contour
 `Count` (vertex count, set to allocate) `X[i]` `Y[i]` (1-based index) `Translate(dx,dy)` `Replicate` `Clear` `AddPoint(x,y)`
+Also accessible as `x(i)` `y(i)` (0-based function call syntax, used by ContourUtilities).
 Factory: `Contour := PCBServer.PCBContourFactory;` - create empty contour.
+
+### IPCB_GeometricPolygon
+`Count` (Integer, number of contours) `Contour(I)` (IPCB_Contour, 0-based) `Area` (Int64)
+`AddContour(AContour)` (IPCB_Contour) - add contour to polygon.
+Factory: `Poly := PCBServer.PCBGeometricPolygonFactory;` - create empty geometric polygon.
+
+### IPCB_ContourMaker2 (Contour Maker)
+`ContourMaker := PCBServer.PCBContourMaker;`
+`MakeContour(APrim, AExpansion, ALayer)` (IPCB_GeometricPolygon) - generate contour from primitive with expansion on layer.
+Works with eTrackObject, eArcObject, eRegionObject, eTextObject, ePadObject, eComponentBodyObject.
+
+### IPCB_ContourUtilities
+`PCBServer.PCBContourUtilities.PointInContour(AContour, x, y)` (Boolean) - test if point is inside contour.
+`PCBServer.PCBContourUtilities.GeometricPolygonsTouch(APoly, BPoly)` (Boolean) - test if two geometric polygons overlap.
 
 ### IPCB_Polygon
 `Layer` `Detail` `Net` `PolyHatchStyle` `PourOver` `RemoveDead` `Grid` `TrackSize` `UseOctagons`
@@ -164,6 +181,7 @@ Iterate members: `Net.GroupIterator_Create` (see Group Iterator section)
 
 ### IPCB_ComponentBody
 `Name` `Kind` (TRegionKind) `GetOverallHeight` `OverallHeight` `StandoffHeight` `Model` `Model.ModelType`
+`Area` (Int64, body area) `Component` (IPCB_Component, parent component) `Identifier` (String, description)
 `ModelFactory_UpdateModel(Radius, Param, ModelType)` - update/recreate 3D model.
 **e3DModelType**: `e3DModelType_Extruded` `e3DModelType_Cylinder` `e3DModelType_Sphere` `e3DModelType_Generic`
 
@@ -189,6 +207,7 @@ TObjectId = `eDifferentialPairObject`. Used with `PCBServer.PCBClassFactoryByCla
 ### IPCB_Primitive (base)
 `ObjectId` `Layer` `Selected` `BoundingRectangle` (TCoordRect) `BoundingRectangleNoNameCommentForSignals` (TCoordRect - excludes name/comment) `I_ObjectAddress` `MoveByXY(dx,dy)` `IsFreePrimitive` `Net`
 `Moveable` (Boolean, lock/unlock movement) `TearDrop` (Boolean) `InDimension` (Boolean) `InCoordinate` (Boolean) `Replicate` (clone object) `SetState_Selected(True/False)` `GraphicallyInvalidate` (force redraw) `Board` (parent IPCB_Board ref)
+`Descriptor` (String, human-readable description) `IsHidden` (Boolean, check if object is hidden)
 `InComponent` `InPolygon` `InNet` `.Component` `.Polygon` `.Net` (parent accessors)
 `IsTestpoint_Top` `IsTestpoint_Bottom` `IsAssyTestpoint_Top` `IsAssyTestpoint_Bottom` (Boolean, testpoint markers)
 `UnionIndex` (Integer, objects with same index belong to same union)
@@ -312,6 +331,7 @@ SetOfLayers.Include(layer);
 `ILayer.MechanicalLayer(i)` - get TLayer for mechanical layer index (1-32).
 `ILayer.IsSignalLayer(layerID)` - Boolean test if layer is signal layer.
 `Board.LayerStack.LayerObject_V7(layer)` - get IPCB_LayerObject_V7 for V7 layer API.
+`LayerObj.V6_LayerID` - get V6 layer identifier from layer object.
 `LayerObj.V7_LayerID` - get V7 layer identifier from layer object.
 `LayerObj.IsDisplayed[Board]` - get/set layer display state (Boolean).
 
@@ -326,6 +346,7 @@ Board.BoardOutline.Segments[i].vx, .vy  // vertex coords
 Board.BoardOutline.Segments[i].Kind     // ePolySegmentLine or ePolySegmentArc
 Board.BoardOutline.Segments[i].cx, .cy, .Radius, .Angle1, .Angle2  // arc props
 Board.BoardOutline.AreaSize  // in 10^-14 inch^2
+Board.BoardOutline.BoardOutline_GeometricPolygon  // IPCB_GeometricPolygon - board outline as polygon
 ```
 
 ## RULES
