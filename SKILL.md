@@ -5,6 +5,8 @@ description: Expert guidance for writing Altium Designer DelphiScript automation
 
 # Altium DelphiScript Scripting Skill
 
+**Version: 2.0.0**
+
 ## Overview
 
 This skill combines two approaches for writing Altium Designer DelphiScript automation scripts:
