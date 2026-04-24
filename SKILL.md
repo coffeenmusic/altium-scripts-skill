@@ -64,10 +64,27 @@ Schematic editor API. Covers: SchServer, document access, coordinate units, undo
 #### `references/General_DXP_API_Reference.md`
 Everything else. Covers: DXP Client framework (IClient, IServerRecord, IServerProcess, IServerDocument, IServerModule), Workspace Manager interfaces (IWorkSpace, IProject, IDocument, IComponent, INet, IPin, IPart), Messages Manager, Integrated Library Manager, Model Type Manager, FPGA Configuration, complete process system catalog (PCB color/layer, SCH operations, PDF publishing, netlist generation, waveform import, common dialogs), general DelphiScript utilities (file I/O, TIniFile, TXceedZip, FindFiles, RunApplication), VCL form structure, VCL components (TForm, TButton, TEdit, TComboBox, TCheckListBox, TProgressBar, TObjectList, etc.), DelphiScript language notes.
 
-#### `references/classes/Altium_Class_Structures.md`
-Complete interface member listings from Altium Script IDE. Use when you need the full property/method list for a specific interface that isn't fully covered in the API references or example scripts. Base class members are documented once (e.g., `IPCB_Primitive`); derived classes list only their unique additions.
+### Step 6: Look Up Complete Member Listings
 
-### Step 6: Write the New Script
+If you need the **complete property/method list** for a specific interface or class not fully covered in the API references or example scripts, use the comprehensive API data:
+
+1. Read `references/api/API_Map.md` to find the interface/class name and which file it's in
+2. Search for the `## TypeName` section header in the indicated file
+3. Read just that section for all members
+
+The comprehensive API files use inheritance deduplication — base class members (e.g., IPCB_Primitive) are documented once, and derived interfaces list only their unique additions. Check `references/api/API_Hierarchy.md` to see which interfaces inherit from which base.
+
+**Files in `references/api/`:**
+- `API_Map.md` — Master index of all 2,483 interfaces + classes with member counts
+- `PCB_Interfaces.md` — All 531 IPCB_* interfaces (deduped against IPCB_Primitive)
+- `SCH_Interfaces.md` — All 131 ISch_* interfaces (deduped against ISch_GraphicalObject)
+- `Other_Interfaces.md` — All 815 other interfaces (IClient, IProject, IDraftsman, etc.)
+- `Classes.md` — All 1,006 classes (deduped against TWinControl/TComponent/TObject)
+- `Constants.md` — All 10,548 constants, grouped by domain
+- `Global_Functions.md` — All 2,958 global functions and procedures
+- `API_Hierarchy.md` — Inheritance trees showing which types inherit from which bases
+
+### Step 7: Write the New Script
 
 Using the example code as the primary foundation:
 
@@ -370,7 +387,14 @@ End.
 | `references/overview.md` | One-sentence script summaries | First - find relevant examples |
 | `references/summaries.md` | Detailed script descriptions | When overview isn't enough detail |
 | `references/scripts/[category]/` | Actual working source code | Read code of relevant examples |
-| `references/PCB_API_Reference.md` | PCB interface/property details | Supplement examples with API detail |
-| `references/SCH_API_Reference.md` | SCH interface/property details | Supplement examples with API detail |
-| `references/General_DXP_API_Reference.md` | DXP/WSM/VCL/utility details | Framework, processes, VCL, utilities |
-| `references/classes/Altium_Class_Structures.md` | Complete interface member lists | When API refs lack specific members |
+| `references/PCB_API_Reference.md` | PCB patterns, code examples, process ops | Patterns, undo system, iterators, processes |
+| `references/SCH_API_Reference.md` | SCH patterns, code examples, process ops | Patterns, model system, iterators, processes |
+| `references/General_DXP_API_Reference.md` | DXP/WSM/VCL patterns, process catalog | Framework, processes, VCL forms, utilities |
+| `references/api/API_Map.md` | Master index of all interfaces/classes | Find which file has a specific type's members |
+| `references/api/PCB_Interfaces.md` | All 531 IPCB_* interface members | Complete PCB member listings |
+| `references/api/SCH_Interfaces.md` | All 131 ISch_* interface members | Complete SCH member listings |
+| `references/api/Other_Interfaces.md` | All 815 other interface members | IClient, IProject, IDraftsman, etc. |
+| `references/api/Classes.md` | All 1,006 class members | VCL classes, all Altium classes |
+| `references/api/Constants.md` | All 10,548 constants by domain | Enum values, layer constants, flags |
+| `references/api/Global_Functions.md` | All 2,958 global functions/procedures | Standalone utility functions |
+| `references/api/API_Hierarchy.md` | Inheritance trees | Which types inherit from which bases |
